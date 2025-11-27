@@ -57,7 +57,7 @@ def generate_makefile(config):
 
     objects_str = " ".join(objects)
 
-    mkdir_cmd = "mkdir -p" if platform.system() != "Windows" else f"if not exist {normalize_path(out_dir)} mkdir {normalize_path(out_dir)}"
+    mkdir_cmd = "@mkdir -p $(OUT_DIR)"
     clean_cmd = "rm -rf $(OUT_DIR)/*.o $(TARGET)"
 
     makefile_content = f"""

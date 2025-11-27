@@ -14,7 +14,7 @@ remove_objects:
 	rm -f $(OBJECTS)
 
 $(OUT_DIR):
-	if not exist bin mkdir bin
+	@mkdir -p $(OUT_DIR)
 
 $(TARGET): $(OBJECTS)
 	$(CC) -o $(TARGET) $(OBJECTS) $(LDFLAGS)

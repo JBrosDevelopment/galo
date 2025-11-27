@@ -22,5 +22,8 @@ jobs:
       - name: Generate Makefile
         run: python ./MakefileGenerator.py
 
+      - name: show Makefile
+        run: cat Makefile
+
       - name: Run make
         run: make
