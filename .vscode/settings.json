@@ -1,6 +1,0 @@
-{
-    "files.associations": {
-        "*.json": "json",
-        "stdio.h": "c"
-    }
-}
