@@ -1,0 +1,33 @@
+{
+    "name": "galo",
+    "version": "0.1.0",
+    "out-dir": "bin",
+    "compiler": "gcc",
+    "source": [
+        "src/"
+    ],
+    "include": [
+    ],
+    "library": [
+    ],
+    "flags": [
+        "-Wall",
+        "-Wextra",
+        "-O2"
+    ],
+    "options": [
+        {
+            "name": "LanguageType",
+            "options": [
+                "Compiler",
+                "Transpiler",
+                "Interpreter"
+            ],
+            "value": 2
+        }
+    ],
+    "make-run": {
+        "enable": true,
+        "args": []
+    }
+}
