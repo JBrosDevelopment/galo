@@ -1,15 +1,15 @@
 #include <stdio.h>
+#include "galo_headers.h"
 
 int main() {
-    // for testing:
-#if LanguageType == Interpreter
-    printf("Interpreter\n");
-#endif
-#if LanguageType == Compiler
-    printf("Compiler\n");
-#endif
-#if LanguageType == Transpiler
-    printf("Transpiler\n");
-#endif
+    const char* source_code = "let x int = 10\0";
+    TokenList* tokens = create_token_list(); 
+
+    lexer(source_code, tokens);
+    parser();
+    validator();
+    run();
+
+    free_token_list(tokens);
     return 0;
 }

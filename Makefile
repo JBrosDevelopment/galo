@@ -5,10 +5,10 @@ LDFLAGS =
 OUT_DIR = bin
 TARGET = $(OUT_DIR)/galo
 
-SOURCES = src\compiler.c src\interpreter.c src\lexer.c src\main.c src\parser.c src\transpiler.c src\validator.c
-OBJECTS = bin\compiler.o bin\interpreter.o bin\lexer.o bin\main.o bin\parser.o bin\transpiler.o bin\validator.o
+SOURCES = src\compiler.c src\interpreter.c src\lexer.c src\main.c src\parser.c src\token_list.c src\transpiler.c src\validator.c
+OBJECTS = bin\compiler.o bin\interpreter.o bin\lexer.o bin\main.o bin\parser.o bin\token_list.o bin\transpiler.o bin\validator.o
 
-all: $(OUT_DIR) $(TARGET) remove_objects
+all: $(OUT_DIR) $(TARGET)
 
 remove_objects:
 	rm -f $(OBJECTS)
@@ -40,6 +40,10 @@ bin\parser.o: src\parser.c
 	@mkdir -p bin
 	gcc -Wall -Wextra -O2  -DLanguageType=2 -DCompiler=0 -DTranspiler=1 -DInterpreter=2 -c src\parser.c -o bin\parser.o
 
+bin\token_list.o: src\token_list.c
+	@mkdir -p bin
+	gcc -Wall -Wextra -O2  -DLanguageType=2 -DCompiler=0 -DTranspiler=1 -DInterpreter=2 -c src\token_list.c -o bin\token_list.o
+
 bin\transpiler.o: src\transpiler.c
 	@mkdir -p bin
 	gcc -Wall -Wextra -O2  -DLanguageType=2 -DCompiler=0 -DTranspiler=1 -DInterpreter=2 -c src\transpiler.c -o bin\transpiler.o
@@ -52,5 +56,5 @@ bin\validator.o: src\validator.c
 clean:
 	rm -rf $(OUT_DIR)/*.o $(TARGET)
 
-run: $(TARGET) remove_objects
+run: $(TARGET)
 	./$(TARGET) 

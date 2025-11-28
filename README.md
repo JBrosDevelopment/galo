@@ -17,7 +17,8 @@ make run
 
 ```
 fun add(left int, right int) int
-    return left + right
+    # inside parenthesis because all operations require parenthesis to define order of operations
+    return (left + right) 
 end
 
 let result int = add(5, 10)
@@ -49,9 +50,9 @@ p y = 20
 
 ```
 let condition bool = true
-if true == condition and not false
+if condition
     print("This is true!\n")
-elif condition == false or false
+elif ((condition == false) or false)
     print("Oh no it's false!\n")
 else
     print("This is false!\n")
@@ -86,6 +87,17 @@ end
 
 let my_color Color = Color init(0, 0, 0)
 my_color set_red(my_color, 255)
+```
+
+**Data Types**
+byte, int, float, bool, string, and user-defined structs are supported.
+
+```
+let b byte = 255
+let i int = 12345
+let b2 byte = (b + i) # this will raise an error because byte + int results in an int
+let f float = 3.14
+let s string = f # raises an error, cannot assign float to string
 ```
 
 ## Requirements

@@ -70,7 +70,7 @@ TARGET = $(OUT_DIR)/{name}
 SOURCES = {' '.join(normalize_path(s) for s in sources)}
 OBJECTS = {objects_str}
 
-all: $(OUT_DIR) $(TARGET) remove_objects
+all: $(OUT_DIR) $(TARGET)
 
 remove_objects:
 	rm -f $(OBJECTS)
@@ -90,7 +90,7 @@ clean:
     if config.get("make-run", {}).get("enable", False):
         args = " ".join(config["make-run"].get("args", []))
         makefile_content += f"""
-run: $(TARGET) remove_objects
+run: $(TARGET)
 \t./$(TARGET) {args}
 """
 
