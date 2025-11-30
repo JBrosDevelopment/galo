@@ -5,7 +5,7 @@ enum TokenType {
     TOKEN_CONSTANT_FLOAT,
     TOKEN_CONSTANT_STRING,
     TOKEN_CONSTANT_BOOLEAN,
-    TOKEN_BUILT_INT_TYPE,
+    TOKEN_NATIVE_TYPE,
     TOKEN_KEYWORD_LET,
     TOKEN_KEYWORD_FUN,
     TOKEN_KEYWORD_END,
@@ -16,6 +16,7 @@ enum TokenType {
     TOKEN_KEYWORD_WHILE,
     TOKEN_OPERATOR_ASSIGN,
     TOKEN_OPERATOR_ARITHMETIC,
+    TOKEN_OPERATOR_COMPARISON,
     TOKEN_OPERATOR_LOGICAL,
     TOKEN_PARENTHESIS_OPEN,
     TOKEN_PARENTHESIS_CLOSE,
@@ -39,7 +40,11 @@ void free_token_list(TokenList* token_list);
 void add_token(TokenList* token_list, Token token);
 Token* get_token(TokenList* token_list, int index);
 
+const char* read_file(const char* filename);
 
+void debug_lexer(TokenList* token_list);
+void debug_lexer_reshape(TokenList* token_list);
+const char* get_token_type_name(enum TokenType type);
 
 void lexer(const char* source_code, TokenList* token_list);
 void parser();
