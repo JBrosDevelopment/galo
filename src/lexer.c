@@ -304,6 +304,7 @@ void debug_lexer_reshape(TokenList* token_list) {
         }
         printf("%s ", token->value);
     }
+    printf("\n");
 }
 
 #endif // Lexer_H
