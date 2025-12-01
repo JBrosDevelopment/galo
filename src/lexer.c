@@ -21,9 +21,13 @@ void lexer(const char* source_code, TokenList* token_list) {
     int start_of_token = -1;
     char lexing_code = LEXING_CODE_NONE;
     int line = 1;
+    int column = 1;
     int i;
     for (i = 0; source_code[i] != '\0'; i++) {
         Token token;
+        token.line = line;
+        token.column = column;
+        column++;
 
         if (lexing_code == LEXING_CODE_STRING) {
             if (source_code[i] == '"') {
@@ -47,16 +51,19 @@ void lexer(const char* source_code, TokenList* token_list) {
                 token.value = "\n";
                 add_token(token_list, token);
                 line++;
+                column = 1;
             }
             continue;
         } else if (lexing_code == LEXING_CODE_NUMBER && (source_code[i] < '0' || source_code[i] > '9') && source_code[i] != '.') {
             lexer_add_word_or_number_token(source_code, i, &start_of_token, &lexing_code, line, &token);
             add_token(token_list, token);
             lexing_code = LEXING_CODE_NONE;
+            token.column = column;
         } else if (lexing_code == LEXING_CODE_WORD && !((source_code[i] >= 'A' && source_code[i] <= 'Z') || (source_code[i] >= 'a' && source_code[i] <= 'z') || (source_code[i] >= '0' && source_code[i] <= '9')) && source_code[i] != '_') {
             lexer_add_word_or_number_token(source_code, i, &start_of_token, &lexing_code, line, &token);
             add_token(token_list, token);
             lexing_code = LEXING_CODE_NONE;
+            token.column = column;
         }
 
         switch (source_code[i])
@@ -65,6 +72,7 @@ void lexer(const char* source_code, TokenList* token_list) {
             token.type = TOKEN_END_OF_LINE;
             token.value = "\n";
             line++;
+            column = 1;
             break;
         case '#':
             lexing_code = LEXING_CODE_COMMENT;
@@ -170,11 +178,15 @@ void lexer(const char* source_code, TokenList* token_list) {
         exit(1);
     } else if (lexing_code == LEXING_CODE_NUMBER || lexing_code == LEXING_CODE_WORD) {
         Token token;
+        token.column = column;
+        token.line = line;
         lexer_add_word_or_number_token(source_code, i, &start_of_token, &lexing_code, line, &token);
         add_token(token_list, token);
     }
 
     Token eof_token;
+    eof_token.column = column;
+    eof_token.line = line;
     eof_token.type = TOKEN_EOF;
     eof_token.value = "\0";
     add_token(token_list, eof_token);
@@ -290,7 +302,7 @@ void debug_lexer(TokenList* token_list) {
     for (int i = 0; i < token_list->size; i++) {
         Token* token = &token_list->tokens[i];
         char* type_name = (char*)get_token_type_name(token->type);
-        printf("Type: %s, Value: %s\n", type_name, token->value);
+        printf("Line: %d, Column: %d, Type: %s, Value: %s\n", token->line, token->column, type_name, token->value);
     }
 }
 

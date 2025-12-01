@@ -29,4 +29,29 @@ Token* get_token(TokenList* token_list, int index) {
     return &token_list->tokens[index];
 }
 
+NodeList* create_node_list() {
+    NodeList* node_list = (NodeList*)malloc(sizeof(NodeList));
+    node_list->size = 0;
+    node_list->capacity = 250;
+    node_list->nodes = (Node*)malloc(sizeof(Node) * node_list->capacity);
+    return node_list;
+}
+void free_node_list(NodeList* node_list) {
+    free(node_list->nodes);
+    free(node_list);
+}
+void add_node(NodeList* node_list, Node node) {
+    if (node_list->size >= node_list->capacity) {
+        node_list->capacity *= 2;
+        node_list->nodes = (Node*)realloc(node_list->nodes, sizeof(Node) * node_list->capacity);
+    }
+    node_list->nodes[node_list->size++] = node;
+}
+Node* get_node(NodeList* node_list, int index) {
+    if (index < 0 || index >= node_list->size) {
+        return NULL;
+    }
+    return &node_list->nodes[index];
+}
+
 #endif // TokenList_H

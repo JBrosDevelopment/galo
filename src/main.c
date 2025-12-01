@@ -9,16 +9,20 @@ int main() {
         return 1;
     }
     TokenList* tokens = create_token_list(); 
-
+    
     lexer(source_code, tokens);
     debug_lexer(tokens);
-    debug_lexer_reshape(tokens);
+    // debug_lexer_reshape(tokens);
     
-    parser();
+    NodeList* ast = create_node_list();
+
+    parser(tokens, ast);
+
     validator();
     run();
 
     free_token_list(tokens);
+    free_node_list(ast);
     free((void*)source_code);
     return 0;
 }
