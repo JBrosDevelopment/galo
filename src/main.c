@@ -8,21 +8,29 @@ int main() {
         fprintf(stderr, "Failed to read file\n");
         return 1;
     }
-    TokenList* tokens = create_token_list(); 
+    TokenList* token_list = create_token_list(); 
     
-    lexer(source_code, tokens);
-    debug_lexer(tokens);
-    // debug_lexer_reshape(tokens);
+    printf("lexing...\n");
+    lexer(source_code, token_list);
+    debug_lexer_reshape(token_list);
     
     NodeList* ast = create_node_list();
+    ObjectList* object_list = create_object_list();
+    int index = 0;
+    
+    printf("parsing...\n");
+    parser(token_list, object_list, ast, &index);
+    debug_parser(ast);
 
-    parser(tokens, ast);
-
+    printf("validating...\n");
     validator();
+
+    printf("runnning...\n");
     run();
 
-    free_token_list(tokens);
     free_node_list(ast);
+    free_object_list(object_list);
+    free_token_list(token_list);
     free((void*)source_code);
     return 0;
 }

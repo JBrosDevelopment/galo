@@ -54,7 +54,8 @@ enum NodeType {
     NODE_OPERATION,
     NODE_IDENTIFIER,
     NODE_CONSTANT,
-    NODE_BODY
+    NODE_BODY,
+    NODE_EMPTY
 };
 
 typedef struct Node_t {
@@ -75,8 +76,8 @@ typedef struct NodeList_t {
 
 typedef struct VariableDeclaration_t {
     Token* name;
-    Token* var_type;
-    Node* value;
+    Token* type;
+    Node value;
 } VariableDeclaration;
 
 typedef struct Parameter_t {
@@ -101,7 +102,7 @@ typedef struct StructDeclaration_t {
 
 typedef struct VariableAssignment_t {
     Token* name;
-    Node* value;
+    Node value;
 } VariableAssignment;
 
 typedef struct FunctionCall_t {
@@ -110,31 +111,31 @@ typedef struct FunctionCall_t {
 } FunctionCall;
 
 typedef struct WhileLoop_t {
-    Node* condition;
+    Node condition;
     Body body;
 } WhileLoop;
 
 typedef struct ElifIfStatement_t {
-    Node* condition;
+    Node condition;
     Body body;
     struct ElifIfStatement_t* next;
 } ElifIfStatement;
 
 typedef struct IfStatement_t {
-    Node* condition;
+    Node condition;
     Body body;
     ElifIfStatement* elif;
     Body else_body;
 } IfStatement;
 
 typedef struct ReturnStatement_t {
-    Node* value;
+    Node value;
 } ReturnStatement;
 
 typedef struct Operation_t {
     Token* operator;
-    Node* left;
-    Node* right;
+    Node left;
+    Node right;
 } Operation;
 
 typedef struct Identifier_t {
@@ -150,6 +151,30 @@ void free_node_list(NodeList* node_list);
 void add_node(NodeList* node_list, Node node);
 Node* get_node(NodeList* node_list, int index);
 
+typedef struct IntList_t {
+    int* int_list;
+    int size;
+    int capacity;
+} IntList;
+
+IntList* create_int_list();
+void free_int_list(IntList* int_list);
+void add_int(IntList* int_list, int value);
+int* get_int(IntList* int_list, int index);
+
+typedef struct ObjectList_t {
+    char* objects;
+    IntList object_sizes;
+    int size;
+    int capacity;
+} ObjectList;
+
+
+ObjectList* create_object_list();
+void free_object_list(ObjectList* object_list);
+void* add_object(ObjectList* object_list, void* object, int size);
+void* get_object(ObjectList* object_list, int index, int* size_out);
+
 const char* read_file(const char* filename);
 
 void debug_lexer(TokenList* token_list);
@@ -157,6 +182,10 @@ void debug_lexer_reshape(TokenList* token_list);
 const char* get_token_type_name(enum TokenType type);
 void lexer(const char* source_code, TokenList* token_list);
 
-void parser(TokenList* tokens, NodeList* ast);
+void parser(TokenList* tokens, ObjectList* object_list, NodeList* ast, int* index);
+const char* get_node_type_name(enum NodeType type);
+void debug_parser(NodeList* ast);
+void debug_parser_node(Node* node);
+
 void validator();
 void run();

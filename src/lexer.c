@@ -16,8 +16,6 @@
 void lexer_add_word_or_number_token(const char* source_code, int i, int* start_of_token, char* lexing_code, int line, Token* token); // Forward declaration
 
 void lexer(const char* source_code, TokenList* token_list) {
-    printf("Lexing...\n");
-    
     int start_of_token = -1;
     char lexing_code = LEXING_CODE_NONE;
     int line = 1;
@@ -294,7 +292,9 @@ const char* get_token_type_name(enum TokenType type) {
         case TOKEN_COMMA: return "TOKEN_COMMA"; 
         case TOKEN_END_OF_LINE: return "TOKEN_END_OF_LINE";
     }
-    return "ERROR_UNKNOWN_TOKEN_TYPE";
+    static char error_message[50];
+    sprintf(error_message, "Error: Invalid token type: %d", type);
+    return error_message;
 }
 
 void debug_lexer(TokenList* token_list) {
