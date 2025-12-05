@@ -82,17 +82,31 @@ void parse_var_decl(TokenList* tokens, ObjectList* object_list, int* index, Vari
 }
 
 void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, VariableAssignment* var_assign) {
-    Token* var_name = get_token(tokens, *index);
-    if (var_name->type != TOKEN_IDENTIFIER) {
-        printf("Error: Invalid variable name in line %d\n", var_name->line);
-        exit(1);
+    int size = 0;
+    Token** var_scope = malloc(sizeof(Token*) * 16); // max scope depth is 16 
+    
+    while (get_token(tokens, *index)->type == TOKEN_IDENTIFIER) {
+        Token* name = get_token(tokens, *index);
+        var_scope[size] = name;
+        if (size == 16) {
+            printf("Error: Invalid variable assignment, max scope depth is 16 in line %d\n", get_token(tokens, *index)->line);
+            exit(1);
+        }
+        size++;
+        (*index)++;
     }
-    var_assign->name = var_name;
 
-    (*index)++;
+    Token** var_scope_address = add_object(object_list, var_scope, sizeof(Token*) * size);
+
+    var_assign->scope_size = size;
+    var_assign->scope = var_scope_address;
+
+    if (var_scope != NULL) {
+        free(var_scope);
+    }
 
     if (get_token(tokens, *index)->type != TOKEN_OPERATOR_ASSIGN) {
-        printf("Error: Invalid variable declaration in line %d\n", get_token(tokens, *index)->line);
+        printf("Error: Invalid variable assignment in line %d\n", get_token(tokens, *index)->line);
         exit(1);
     }
 
@@ -226,7 +240,7 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
         node->type = NODE_VARIABLE_DECLARATION;
         node->data = add_object(object_list, &var_decl, sizeof(VariableDeclaration));
     }
-    else if (first_token->type == TOKEN_IDENTIFIER && get_token(tokens, *index + 1)->type == TOKEN_OPERATOR_ASSIGN) {
+    else if (first_token->type == TOKEN_IDENTIFIER) {
         VariableAssignment var_assign;
         parse_var_assign(tokens, object_list, index, &var_assign);
         node->type = NODE_VARIABLE_ASSIGNMENT;
@@ -237,6 +251,19 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
         parse_function(tokens, object_list, index, &func_decl);
         node->type = NODE_FUNCTION_DECLARATION;
         node->data = add_object(object_list, &func_decl, sizeof(FunctionDeclaration));
+    }
+    else if (first_token->type == TOKEN_KEYWORD_RETURN) {
+        ReturnStatement return_stmt;
+        Node value;
+        (*index)++;
+        if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE && get_token(tokens, *index)->type != TOKEN_EOF) {
+            value = parse_expression(tokens, object_list, index);
+        } else {
+            value.type = NODE_EMPTY;
+        }
+        return_stmt.value = value;
+        node->type = NODE_RETURN_STATEMENT;
+        node->data = add_object(object_list, &return_stmt, sizeof(ReturnStatement));
     }
     else if (first_token->type == TOKEN_KEYWORD_END) {
         node->type = NODE_END;
@@ -250,7 +277,7 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
         (*index)++;
     }
     else {
-        printf("Error: Invalid token `%s` to start line %d\n", first_token->value, first_token->line);
+        printf("Error: Invalid token `%s` in line %d\n", first_token->value, first_token->line);
         exit(1);
     }
 }
@@ -266,6 +293,39 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
         node.type = NODE_IDENTIFIER;
         node.data = (void*)token;
         (*index)++;
+    } else if (token->type == TOKEN_PARENTHESIS_OPEN) {
+        (*index)++;
+        Node left = parse_expression(tokens, object_list, index);
+        if (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_CLOSE) {
+            Token* op = get_token(tokens, *index);
+            if (op->type != TOKEN_OPERATOR_ARITHMETIC && op->type != TOKEN_OPERATOR_COMPARISON && op->type != TOKEN_OPERATOR_LOGICAL) {
+                printf("Error: Invalid operator `%s` in line %d\n", op->value, op->line);
+                exit(1);
+            }
+            (*index)++;
+            Node right = parse_expression(tokens, object_list, index);
+            
+            if (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_CLOSE) {
+                printf("Error: Invalid token expression `%s` expected `)` in line %d\n", token->value, token->line);
+                exit(1);
+            }
+
+            (*index)++;
+
+            Operation operation;
+            operation.left = add_object(object_list, &left, sizeof(Node));
+            operation.right = add_object(object_list, &right, sizeof(Node));
+            operation.operator = op;
+
+            node.type = NODE_OPERATION;
+            node.data = add_object(object_list, &operation, sizeof(Operation));
+        } else {
+            (*index)++;
+            node = left;
+        }
+    } else {
+        printf("Error: Invalid token expression `%s` in line %d\n", token->value, token->line);
+        exit(1);
     }
     return node;
 }
@@ -313,7 +373,10 @@ void debug_parser_node(Node* node) {
     }
     else if (node->type == NODE_VARIABLE_ASSIGNMENT) {
         VariableAssignment* var_assign = (VariableAssignment*)node->data;
-        printf("%s = ", var_assign->name->value);
+        for (int i = 0; i < var_assign->scope_size; i++) {
+            printf("%s ", var_assign->scope[i]->value);
+        }
+        printf("= ");
         debug_parser_node(&var_assign->value);
     }
     else if (node->type == NODE_FUNCTION_DECLARATION) {
@@ -335,10 +398,23 @@ void debug_parser_node(Node* node) {
             debug_parser_node(get_node(func_decl->body, i));
             printf("\n");
         }
-        printf("end\n");
+        printf("end");
+    } else if (node->type == NODE_RETURN_STATEMENT) {
+        ReturnStatement* return_stmt = (ReturnStatement*)node->data;
+        printf("return ");
+        if (return_stmt->value.type != NODE_EMPTY) {
+            debug_parser_node(&return_stmt->value);            
+        }
+    } else if (node->type == NODE_OPERATION) {
+        Operation* operation = (Operation*)node->data;
+        printf("(");
+        debug_parser_node(operation->left);
+        printf("%s ", operation->operator->value);
+        debug_parser_node(operation->right);
+        printf(")");
     }
     else {
-        printf("[Error, TYPE: %s]\n", get_node_type_name(node->type));
+        printf("[Error, TYPE: %s] ", get_node_type_name(node->type));
     }
 }
 

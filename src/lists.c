@@ -83,46 +83,36 @@ int* get_int(IntList* int_list, int index) {
 
 
 ObjectList* create_object_list() {
-    ObjectList* ol = malloc(sizeof(ObjectList));
-    ol->size = 0;
-    ol->capacity = 50;
-    ol->objects = malloc(1);
-    ol->object_sizes = *create_int_list(); 
-    return ol;
-}
-void free_object_list(ObjectList* object_list) {
-    if (object_list == NULL) return;
-    free(object_list);
-}
-void* add_object(ObjectList* object_list, void* object, int size) {
-    int offset = 0;
-    for (int i = 0; i < object_list->size; i++) {
-        offset += object_list->object_sizes.int_list[i];
-    }
-    object_list->objects = realloc(object_list->objects, offset + size);
-    
-    void* address = memcpy(object_list->objects + offset, object, size);
-    
-    add_int(&object_list->object_sizes, size);
-    object_list->size++;
-
-    return address;
+    ObjectList* list = malloc(sizeof(ObjectList));
+    list->size = 0;
+    list->capacity = 32;
+    list->objects = malloc(sizeof(void*) * list->capacity);
+    return list;
 }
 
-void* get_object(ObjectList* object_list, int index, int* size_out) {
-    if (index < 0 || index >= object_list->size)
-        return NULL;
+void free_object_list(ObjectList* list) {
+    for (int i = 0; i < list->size; i++)
+        free(list->objects[i]);
+    free(list->objects);
+    free(list);
+}
 
-    int offset = 0;
-    for (int i = 0; i < index; i++) {
-        offset += object_list->object_sizes.int_list[i];
+void* add_object(ObjectList* list, void* data, int size) {
+    if (list->size >= list->capacity) {
+        list->capacity *= 2;
+        list->objects = realloc(list->objects, sizeof(void*) * list->capacity);
     }
 
-    int size = object_list->object_sizes.int_list[index];
-    if (size_out) *size_out = size;
+    void* ptr = malloc(size);
+    memcpy(ptr, data, size);
 
-    return object_list->objects + offset;
+    list->objects[list->size++] = ptr;
+    return ptr; // stable pointer
 }
 
+void* get_object(ObjectList* list, int index) {
+    if (index < 0 || index >= list->size) return NULL;
+    return list->objects[index];
+}
 
 #endif // TokenList_H

@@ -42,6 +42,8 @@ let p Point
 p x = 10
 p y = 20
 
+let X int = p x
+
 # p.x and p.y are not valid syntax
 # scoping is used by space instead of dot notation
 ```

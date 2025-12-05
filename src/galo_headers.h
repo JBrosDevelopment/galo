@@ -98,7 +98,8 @@ typedef struct StructDeclaration_t {
 } StructDeclaration;
 
 typedef struct VariableAssignment_t {
-    Token* name;
+    Token** scope;
+    int scope_size;
     Node value;
 } VariableAssignment;
 
@@ -131,8 +132,8 @@ typedef struct ReturnStatement_t {
 
 typedef struct Operation_t {
     Token* operator;
-    Node left;
-    Node right;
+    Node* left;
+    Node* right;
 } Operation;
 
 typedef struct Identifier_t {
@@ -160,8 +161,7 @@ void add_int(IntList* int_list, int value);
 int* get_int(IntList* int_list, int index);
 
 typedef struct ObjectList_t {
-    char* objects;
-    IntList object_sizes;
+    void** objects;
     int size;
     int capacity;
 } ObjectList;
@@ -170,7 +170,7 @@ typedef struct ObjectList_t {
 ObjectList* create_object_list();
 void free_object_list(ObjectList* object_list);
 void* add_object(ObjectList* object_list, void* object, int size);
-void* get_object(ObjectList* object_list, int index, int* size_out);
+void* get_object(ObjectList* object_list, int index);
 
 const char* read_file(const char* filename);
 

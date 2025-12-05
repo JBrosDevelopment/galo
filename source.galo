@@ -1,13 +1,9 @@
-fun a(b c, d e) f
-    let g h
-end
-
-~
 let before bool
 fun add(l int, r int) int
     return (l + r)
 end
 let after bool
+
 ~
 
 fun add(left int, right int) int
@@ -31,6 +27,8 @@ end
 let p Point
 p x = 10
 p y = 20
+
+let X int = p x
 
 # p.x and p.y are not valid syntax
 # scoping is used by space instead of dot notation
