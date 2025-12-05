@@ -8,6 +8,7 @@ enum TokenType {
     TOKEN_NATIVE_TYPE,
     TOKEN_KEYWORD_LET,
     TOKEN_KEYWORD_FUN,
+    TOKEN_KEYWORD_STRUCT,
     TOKEN_KEYWORD_END,
     TOKEN_KEYWORD_IF,
     TOKEN_KEYWORD_ELIF,
@@ -55,18 +56,14 @@ enum NodeType {
     NODE_IDENTIFIER,
     NODE_CONSTANT,
     NODE_BODY,
-    NODE_EMPTY
+    NODE_EMPTY,
+    NODE_END
 };
 
 typedef struct Node_t {
     enum NodeType type;
     void* data;
 } Node;
-
-typedef struct Body_t {
-    Node* statements;
-    int statement_count;
-} Body;
 
 typedef struct NodeList_t {
     Node* nodes;
@@ -91,7 +88,7 @@ typedef struct FunctionDeclaration_t {
     int parameter_count;
     Token* return_type;
     Token* struct_implementation;
-    Body body;
+    NodeList* body;
 } FunctionDeclaration;
 
 typedef struct StructDeclaration_t {
@@ -112,20 +109,20 @@ typedef struct FunctionCall_t {
 
 typedef struct WhileLoop_t {
     Node condition;
-    Body body;
+    NodeList* body;
 } WhileLoop;
 
 typedef struct ElifIfStatement_t {
     Node condition;
-    Body body;
+    NodeList* body;
     struct ElifIfStatement_t* next;
 } ElifIfStatement;
 
 typedef struct IfStatement_t {
     Node condition;
-    Body body;
+    NodeList* body;
     ElifIfStatement* elif;
-    Body else_body;
+    NodeList* else_body;
 } IfStatement;
 
 typedef struct ReturnStatement_t {

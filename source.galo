@@ -1,5 +1,13 @@
-let x int = 10
-x = ty
+fun a(b c, d e) f
+    let g h
+end
+
+~
+let before bool
+fun add(l int, r int) int
+    return (l + r)
+end
+let after bool
 ~
 
 fun add(left int, right int) int

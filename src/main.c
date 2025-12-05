@@ -12,7 +12,8 @@ int main() {
     
     printf("lexing...\n");
     lexer(source_code, token_list);
-    debug_lexer_reshape(token_list);
+    debug_lexer(token_list);
+    //debug_lexer_reshape(token_list);
     
     NodeList* ast = create_node_list();
     ObjectList* object_list = create_object_list();

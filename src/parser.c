@@ -3,12 +3,12 @@
 
 #include "galo_headers.h"
 #include <stdio.h>
+#include <stdlib.h>
 
-void parse_line(TokenList* tokens, ObjectList* object_list, int* index, int end, Node* node); // Forward declaration
+void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* node); // Forward declaration
 Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index); // Forward declaration
 
 void parser(TokenList* tokens, ObjectList* object_list, NodeList* ast, int* index) {
-    int beginning_of_line_index = 0;
     for (; *index < tokens->size; (*index)++) {
         Token* token = get_token(tokens, *index);
         Node node;
@@ -17,15 +17,15 @@ void parser(TokenList* tokens, ObjectList* object_list, NodeList* ast, int* inde
         if (token->type == TOKEN_EOF) {
             break;
         }
-        if (token->type != TOKEN_END_OF_LINE) {
+        if (token->type == TOKEN_END_OF_LINE) {
             continue;
         }
 
-        int end = *index;
-        *index = beginning_of_line_index;
-        beginning_of_line_index = end + 1;
-        parse_line(tokens, object_list, index, end, &node);
+        parse_line(tokens, object_list, index, &node);
 
+        if (node.type == NODE_END) {
+            break;
+        }
         if (node.type != NODE_EMPTY) {
             add_node(ast, node);
         }
@@ -45,13 +45,14 @@ char if_list_contains_token(TokenList* tokens, int start, int end, enum TokenTyp
 void parse_var_decl(TokenList* tokens, ObjectList* object_list, int* index, VariableDeclaration* var_decl) {
     if (get_token(tokens, *index)->type != TOKEN_KEYWORD_LET) {
         printf("Error: Invalid variable declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
     }
     
     (*index)++;
     Token* var_name = get_token(tokens, *index);
     if (var_name->type != TOKEN_IDENTIFIER) {
         printf("Error: Invalid variable name in line %d\n", var_name->line);
-        return;
+        exit(1);
     }
     var_decl->name = var_name;
 
@@ -59,7 +60,7 @@ void parse_var_decl(TokenList* tokens, ObjectList* object_list, int* index, Vari
     Token* var_type = get_token(tokens, *index);
     if (var_type->type != TOKEN_NATIVE_TYPE && var_type->type != TOKEN_IDENTIFIER) {
         printf("Error: Invalid variable type in line %d\n", var_type->line);
-        return;
+        exit(1);
     }
     var_decl->type = var_type;
 
@@ -72,7 +73,7 @@ void parse_var_decl(TokenList* tokens, ObjectList* object_list, int* index, Vari
         return;
     } else if (get_token(tokens, *index)->type != TOKEN_OPERATOR_ASSIGN) {
         printf("Error: Invalid variable declaration in line %d\n", get_token(tokens, *index)->line);
-        return;
+        exit(1);
     }
 
     (*index)++;
@@ -84,7 +85,7 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
     Token* var_name = get_token(tokens, *index);
     if (var_name->type != TOKEN_IDENTIFIER) {
         printf("Error: Invalid variable name in line %d\n", var_name->line);
-        return;
+        exit(1);
     }
     var_assign->name = var_name;
 
@@ -92,6 +93,7 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
 
     if (get_token(tokens, *index)->type != TOKEN_OPERATOR_ASSIGN) {
         printf("Error: Invalid variable declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
     }
 
     (*index)++;
@@ -99,24 +101,157 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
     var_assign->value = value;
 }
 
-void parse_line(TokenList* tokens, ObjectList* object_list, int* index, int end, Node* node) {
-    char contains_assign = if_list_contains_token(tokens, *index, end, TOKEN_OPERATOR_ASSIGN);
-    Token* first_token = get_token(tokens, *index);
+void parse_function(TokenList* tokens, ObjectList* object_list, int* index, FunctionDeclaration* func_decl) {
+    if (get_token(tokens, *index)->type != TOKEN_KEYWORD_FUN) {
+        printf("Error: Invalid function declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
     
+    (*index)++;
+    Token* func_name = get_token(tokens, *index);
+    Token* struct_implementation = NULL;
+    if (func_name->type != TOKEN_IDENTIFIER) {
+        printf("Error: Invalid function name in line %d\n", func_name->line);
+        exit(1);
+    }
+
+    (*index)++;
+    if (get_token(tokens, *index)->type == TOKEN_IDENTIFIER) {
+        struct_implementation = func_name;
+        func_name = get_token(tokens, *index);
+        (*index)++;
+    }
+
+    func_decl->name = func_name;
+    func_decl->struct_implementation = struct_implementation;
+
+    if (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_OPEN) {
+        printf("Error: Invalid function declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+    
+    (*index)++;
+
+    int parameter_count = 0;
+    Parameter* parameters = malloc(sizeof(Parameter) * 16); // Maximum of 16 parameters per function
+
+    Token* param_name;
+    Token* param_type;
+    int expected = 1; // 1 for name, 2 for type, 3 for comma
+    while (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_CLOSE) {
+        if (expected == 1) {
+            param_name = get_token(tokens, *index);
+            if (param_name->type != TOKEN_IDENTIFIER) {
+                printf("Error: Invalid parameter name in line %d\n", param_name->line);
+                exit(1);
+            }
+            expected = 2;
+        } else if (expected == 2) {
+            param_type = get_token(tokens, *index);
+            if (param_type->type != TOKEN_NATIVE_TYPE && param_type->type != TOKEN_IDENTIFIER) {
+                printf("Error: Invalid parameter type in line %d\n", param_type->line);
+                exit(1);
+            }
+            expected = 3;
+        } else if (expected == 3) {
+            if (get_token(tokens, *index)->type != TOKEN_COMMA) {
+                printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
+                exit(1);
+            }
+            if (parameter_count == 16) {
+                printf("Error: Max of 16 parameters in line %d\n", get_token(tokens, *index)->line);
+                exit(1);
+            }
+            expected = 1;
+            parameters[parameter_count].name = param_name;
+            parameters[parameter_count].param_type = param_type;
+            parameter_count++;
+        } else {
+            printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
+            exit(1);
+        }
+        (*index)++;
+    } 
+
+    if (expected == 3) {
+        parameters[parameter_count].name = param_name;
+        parameters[parameter_count].param_type = param_type;
+        parameter_count++;
+    }
+
+    if (expected != 1 && expected != 3) {
+        printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+
+    Parameter* parameter_address = add_object(object_list, parameters, sizeof(Parameter) * parameter_count);
+
+    if (parameters != NULL) {
+        free(parameters);
+    } 
+
+    func_decl->parameters = parameter_address;
+    func_decl->parameter_count = parameter_count;
+
+    (*index)++;
+
+    Token* return_type = get_token(tokens, *index);
+    if (get_token(tokens, *index)->type != TOKEN_IDENTIFIER && return_type->type != TOKEN_NATIVE_TYPE) {
+        printf("Error: Invalid function return type `%s` in line %d\n", return_type->value, func_name->line);
+        exit(1);
+    }
+    
+    func_decl->return_type = return_type;
+
+    (*index)++;
+
+    if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
+        printf("Error: Invalid function declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+    
+    (*index)++;
+    
+    NodeList* body = create_node_list();
+    parser(tokens, object_list, body, index);
+    func_decl->body = body;
+}
+
+void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* node) {
+    Token* first_token = get_token(tokens, *index);
+
     if (first_token->type == TOKEN_KEYWORD_LET) {
         VariableDeclaration var_decl;
         parse_var_decl(tokens, object_list, index, &var_decl);
         node->type = NODE_VARIABLE_DECLARATION;
         node->data = add_object(object_list, &var_decl, sizeof(VariableDeclaration));
     }
-    else if (contains_assign == 1 && first_token->type == TOKEN_IDENTIFIER) {
+    else if (first_token->type == TOKEN_IDENTIFIER && get_token(tokens, *index + 1)->type == TOKEN_OPERATOR_ASSIGN) {
         VariableAssignment var_assign;
         parse_var_assign(tokens, object_list, index, &var_assign);
         node->type = NODE_VARIABLE_ASSIGNMENT;
         node->data = add_object(object_list, &var_assign, sizeof(VariableAssignment));
     }
-    else if (contains_assign == 1) {
-        printf("Error: Invalid variable declaration or assignment in line %d\n", first_token->line);
+    else if (first_token->type == TOKEN_KEYWORD_FUN) {
+        FunctionDeclaration func_decl;
+        parse_function(tokens, object_list, index, &func_decl);
+        node->type = NODE_FUNCTION_DECLARATION;
+        node->data = add_object(object_list, &func_decl, sizeof(FunctionDeclaration));
+    }
+    else if (first_token->type == TOKEN_KEYWORD_END) {
+        node->type = NODE_END;
+        (*index)++;
+    }
+    else if (first_token->type == TOKEN_EOF) {
+        node->type = NODE_END;
+    }
+    else if (first_token->type == TOKEN_END_OF_LINE) {
+        node->type = NODE_EMPTY;
+        (*index)++;
+    }
+    else {
+        printf("Error: Invalid token `%s` to start line %d\n", first_token->value, first_token->line);
+        exit(1);
     }
 }
 Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
@@ -150,6 +285,7 @@ const char* get_node_type_name(enum NodeType type) {
         case NODE_CONSTANT: return "NODE_CONSTANT";
         case NODE_BODY: return "NODE_BODY";
         case NODE_EMPTY: return "NODE_EMPTY";
+        case NODE_END: return "NODE_END";
     }
     static char error_message[50];
     sprintf(error_message, "Error: Invalid node type: %d", type);
@@ -180,13 +316,34 @@ void debug_parser_node(Node* node) {
         printf("%s = ", var_assign->name->value);
         debug_parser_node(&var_assign->value);
     }
+    else if (node->type == NODE_FUNCTION_DECLARATION) {
+        FunctionDeclaration* func_decl = (FunctionDeclaration*)node->data;
+        printf("fun");
+        if (func_decl->struct_implementation) {
+            printf(" %s", func_decl->struct_implementation->value);
+        }
+        printf(" %s(", func_decl->name->value);
+        for (int i = 0; i < func_decl->parameter_count; i++) {
+            if (i > 0) {
+                printf(", ");
+            }
+            printf("%s %s", func_decl->parameters[i].name->value, func_decl->parameters[i].param_type->value);
+        }
+        printf(") %s\n", func_decl->return_type->value);
+
+        for (int i = 0; i < func_decl->body->size; i++) {
+            debug_parser_node(get_node(func_decl->body, i));
+            printf("\n");
+        }
+        printf("end\n");
+    }
     else {
         printf("[Error, TYPE: %s]\n", get_node_type_name(node->type));
     }
 }
 
 void debug_parser(NodeList* ast) {
-    printf("AST:\n");
+    printf("AST: %d\n", ast->size);
     for (int i = 0; i < ast->size; i++) {
         Node* node = get_node(ast, i);
         debug_parser_node(node);

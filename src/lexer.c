@@ -135,6 +135,7 @@ void lexer(const char* source_code, TokenList* token_list) {
             token.value = ",";
             break;
         case '\0': case '~':
+            token.value = "\0";
             lexing_code = LEXING_CODE_END_LEXING;
             break;
         case '"':
@@ -231,6 +232,8 @@ void lexer_add_word_or_number_token(const char* source_code, int i, int* start_o
         token->type = TOKEN_KEYWORD_LET;
     } else if (strcmp(token_value, "fun") == 0) {
         token->type = TOKEN_KEYWORD_FUN;
+    } else if (strcmp(token_value, "struct") == 0) {
+        token->type = TOKEN_KEYWORD_STRUCT;
     } else if (strcmp(token_value, "end") == 0) {
         token->type = TOKEN_KEYWORD_END;
     } else if (strcmp(token_value, "if") == 0) {
@@ -277,6 +280,7 @@ const char* get_token_type_name(enum TokenType type) {
         case TOKEN_NATIVE_TYPE: return "TOKEN_NATIVE_TYPE"; 
         case TOKEN_KEYWORD_LET: return "TOKEN_KEYWORD_LET"; 
         case TOKEN_KEYWORD_FUN: return "TOKEN_KEYWORD_FUN"; 
+        case TOKEN_KEYWORD_STRUCT: return "TOKEN_KEYWORD_STRUCT";
         case TOKEN_KEYWORD_END: return "TOKEN_KEYWORD_END"; 
         case TOKEN_KEYWORD_IF: return "TOKEN_KEYWORD_IF"; 
         case TOKEN_KEYWORD_ELIF: return "TOKEN_KEYWORD_ELIF"; 
@@ -302,7 +306,7 @@ void debug_lexer(TokenList* token_list) {
     for (int i = 0; i < token_list->size; i++) {
         Token* token = &token_list->tokens[i];
         char* type_name = (char*)get_token_type_name(token->type);
-        printf("Line: %d, Column: %d, Type: %s, Value: %s\n", token->line, token->column, type_name, token->value);
+        printf("Index: %d, Line: %d, Column: %d, Type: %s, Value: %s\n", i, token->line, token->column, type_name, token->value);
     }
 }
 

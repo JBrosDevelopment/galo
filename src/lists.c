@@ -91,7 +91,7 @@ ObjectList* create_object_list() {
     return ol;
 }
 void free_object_list(ObjectList* object_list) {
-    free(object_list->objects);
+    if (object_list == NULL) return;
     free(object_list);
 }
 void* add_object(ObjectList* object_list, void* object, int size) {
@@ -99,10 +99,7 @@ void* add_object(ObjectList* object_list, void* object, int size) {
     for (int i = 0; i < object_list->size; i++) {
         offset += object_list->object_sizes.int_list[i];
     }
-
-    if (object_list->size >= object_list->capacity) {
-        object_list->objects = realloc(object_list->objects, offset + size);
-    }
+    object_list->objects = realloc(object_list->objects, offset + size);
     
     void* address = memcpy(object_list->objects + offset, object, size);
     
