@@ -57,6 +57,7 @@ enum NodeType {
     NODE_CONSTANT,
     NODE_BODY,
     NODE_EMPTY,
+    NODE_TEMP_STRUCT_MEMBER,
     NODE_END
 };
 
@@ -79,7 +80,7 @@ typedef struct VariableDeclaration_t {
 
 typedef struct Parameter_t {
     Token* name;
-    Token* param_type;
+    Token* type;
 } Parameter;
 
 typedef struct FunctionDeclaration_t {

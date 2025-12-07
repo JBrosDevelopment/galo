@@ -1,9 +1,11 @@
-let before bool
-fun add(l int, r int) int
-    return (l + r)
+let before int
+struct Color
+    r byte
+    g byte
+    b byte
+    a byte
 end
-let after bool
-
+let after Color
 ~
 
 fun add(left int, right int) int

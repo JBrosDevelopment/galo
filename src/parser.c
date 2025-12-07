@@ -115,6 +115,61 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
     var_assign->value = value;
 }
 
+Parameter* parse_parameter_list(TokenList* tokens, ObjectList* object_list, int* index, int max_parameters, enum TokenType Seperator, enum TokenType End, Parameter* parameters, int* parameter_count) {
+    Token* param_name;
+    Token* param_type;
+    int expected = 1; // 1 for name, 2 for type, 3 for comma
+    while (get_token(tokens, *index)->type != End) {
+        if (expected == 1) {
+            param_name = get_token(tokens, *index);
+            if (param_name->type != TOKEN_IDENTIFIER) {
+                printf("Error: Invalid parameter name in line %d\n", param_name->line);
+                exit(1);
+            }
+            expected = 2;
+        } else if (expected == 2) {
+            param_type = get_token(tokens, *index);
+            if (param_type->type != TOKEN_NATIVE_TYPE && param_type->type != TOKEN_IDENTIFIER) {
+                printf("Error: Invalid parameter type in line %d\n", param_type->line);
+                exit(1);
+            }
+            expected = 3;
+        } else if (expected == 3) {
+            if (get_token(tokens, *index)->type != Seperator) {
+                printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
+                exit(1);
+            }
+            if (*parameter_count == max_parameters) {
+                printf("Error: Max of %d parameters in line %d\n", max_parameters, get_token(tokens, *index)->line);
+                exit(1);
+            }
+            expected = 1;
+            parameters[*parameter_count].name = param_name;
+            parameters[*parameter_count].type = param_type;
+            (*parameter_count)++;
+        } else {
+            printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
+            exit(1);
+        }
+        (*index)++;
+    } 
+
+    if (expected == 3) {
+        parameters[*parameter_count].name = param_name;
+        parameters[*parameter_count].type = param_type;
+        (*parameter_count)++;
+    }
+
+    if (expected != 1 && expected != 3) {
+        printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+
+    Parameter* parameter_address = add_object(object_list, parameters, sizeof(Parameter) * *parameter_count);
+
+    return parameter_address;
+}
+
 void parse_function(TokenList* tokens, ObjectList* object_list, int* index, FunctionDeclaration* func_decl) {
     if (get_token(tokens, *index)->type != TOKEN_KEYWORD_FUN) {
         printf("Error: Invalid function declaration in line %d\n", get_token(tokens, *index)->line);
@@ -148,57 +203,7 @@ void parse_function(TokenList* tokens, ObjectList* object_list, int* index, Func
 
     int parameter_count = 0;
     Parameter* parameters = malloc(sizeof(Parameter) * 16); // Maximum of 16 parameters per function
-
-    Token* param_name;
-    Token* param_type;
-    int expected = 1; // 1 for name, 2 for type, 3 for comma
-    while (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_CLOSE) {
-        if (expected == 1) {
-            param_name = get_token(tokens, *index);
-            if (param_name->type != TOKEN_IDENTIFIER) {
-                printf("Error: Invalid parameter name in line %d\n", param_name->line);
-                exit(1);
-            }
-            expected = 2;
-        } else if (expected == 2) {
-            param_type = get_token(tokens, *index);
-            if (param_type->type != TOKEN_NATIVE_TYPE && param_type->type != TOKEN_IDENTIFIER) {
-                printf("Error: Invalid parameter type in line %d\n", param_type->line);
-                exit(1);
-            }
-            expected = 3;
-        } else if (expected == 3) {
-            if (get_token(tokens, *index)->type != TOKEN_COMMA) {
-                printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
-                exit(1);
-            }
-            if (parameter_count == 16) {
-                printf("Error: Max of 16 parameters in line %d\n", get_token(tokens, *index)->line);
-                exit(1);
-            }
-            expected = 1;
-            parameters[parameter_count].name = param_name;
-            parameters[parameter_count].param_type = param_type;
-            parameter_count++;
-        } else {
-            printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
-            exit(1);
-        }
-        (*index)++;
-    } 
-
-    if (expected == 3) {
-        parameters[parameter_count].name = param_name;
-        parameters[parameter_count].param_type = param_type;
-        parameter_count++;
-    }
-
-    if (expected != 1 && expected != 3) {
-        printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
-        exit(1);
-    }
-
-    Parameter* parameter_address = add_object(object_list, parameters, sizeof(Parameter) * parameter_count);
+    Parameter* parameter_address = parse_parameter_list(tokens, object_list, index, 16, TOKEN_COMMA, TOKEN_PARENTHESIS_CLOSE, parameters, &parameter_count);
 
     if (parameters != NULL) {
         free(parameters);
@@ -231,6 +236,41 @@ void parse_function(TokenList* tokens, ObjectList* object_list, int* index, Func
     func_decl->body = body;
 }
 
+void parse_struct(TokenList* tokens, ObjectList* object_list, int* index, StructDeclaration* struct_decl) {
+    if (get_token(tokens, *index)->type != TOKEN_KEYWORD_STRUCT) {
+        printf("Error: Invalid struct declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+    
+    (*index)++;
+    Token* struct_name = get_token(tokens, *index);
+    if (struct_name->type != TOKEN_IDENTIFIER) {
+        printf("Error: Invalid struct name in line %d\n", struct_name->line);
+        exit(1);
+    }
+    
+    struct_decl->name = struct_name;
+
+    (*index)++;
+    if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
+        printf("Error: Invalid struct declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+    
+    (*index)++;
+    
+    int field_count = 0;
+    Parameter* fields = malloc(sizeof(Parameter) * 32); // Maximum of 32 fields per struct
+    Parameter* field_address = parse_parameter_list(tokens, object_list, index, 32, TOKEN_END_OF_LINE, TOKEN_KEYWORD_END, fields, &field_count);
+
+    if (fields != NULL) {
+        free(fields);
+    } 
+
+    struct_decl->fields = field_address;
+    struct_decl->field_count = field_count;
+}
+
 void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* node) {
     Token* first_token = get_token(tokens, *index);
 
@@ -251,6 +291,12 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
         parse_function(tokens, object_list, index, &func_decl);
         node->type = NODE_FUNCTION_DECLARATION;
         node->data = add_object(object_list, &func_decl, sizeof(FunctionDeclaration));
+    }
+    else if (first_token->type == TOKEN_KEYWORD_STRUCT) {
+        StructDeclaration struct_decl;
+        parse_struct(tokens, object_list, index, &struct_decl);
+        node->type = NODE_STRUCT_DECLARATION;
+        node->data = add_object(object_list, &struct_decl, sizeof(StructDeclaration));
     }
     else if (first_token->type == TOKEN_KEYWORD_RETURN) {
         ReturnStatement return_stmt;
@@ -390,7 +436,7 @@ void debug_parser_node(Node* node) {
             if (i > 0) {
                 printf(", ");
             }
-            printf("%s %s", func_decl->parameters[i].name->value, func_decl->parameters[i].param_type->value);
+            printf("%s %s", func_decl->parameters[i].name->value, func_decl->parameters[i].type->value);
         }
         printf(") %s\n", func_decl->return_type->value);
 
@@ -405,6 +451,13 @@ void debug_parser_node(Node* node) {
         if (return_stmt->value.type != NODE_EMPTY) {
             debug_parser_node(&return_stmt->value);            
         }
+    } else if(node->type == NODE_STRUCT_DECLARATION) {
+        StructDeclaration* struct_decl = (StructDeclaration*)node->data;
+        printf("struct %s\n", struct_decl->name->value);
+        for (int i = 0; i < struct_decl->field_count; i++) {
+            printf("    %s %s\n", struct_decl->fields[i].name->value, struct_decl->fields[i].type->value);
+        }
+        printf("end");
     } else if (node->type == NODE_OPERATION) {
         Operation* operation = (Operation*)node->data;
         printf("(");
