@@ -96,6 +96,11 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
         (*index)++;
     }
 
+    if (size == 0) {
+        printf("Error: Invalid variable assignment in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+
     Token** var_scope_address = add_object(object_list, var_scope, sizeof(Token*) * size);
 
     var_assign->scope_size = size;
@@ -271,6 +276,86 @@ void parse_struct(TokenList* tokens, ObjectList* object_list, int* index, Struct
     struct_decl->field_count = field_count;
 }
 
+void parse_function_call(TokenList* tokens, ObjectList* object_list, int* index, FunctionCall* func_call) {
+    int size = 0;
+    Token** scope = malloc(sizeof(Token*) * 16); // max scope depth is 16 
+    
+    while (get_token(tokens, *index)->type == TOKEN_IDENTIFIER) {
+        Token* name = get_token(tokens, *index);
+        scope[size] = name;
+        if (size == 16) {
+            printf("Error: Invalid function call, max scope depth is 16 in line %d\n", get_token(tokens, *index)->line);
+            exit(1);
+        }
+        size++;
+        (*index)++;
+    }
+
+    if (size == 0) {
+        printf("Error: Invalid variable assignment in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+
+    Token** scope_address = add_object(object_list, scope, sizeof(Token*) * size);
+
+    func_call->scope_size = size;
+    func_call->scope = scope_address;
+
+    if (scope != NULL) {
+        free(scope);
+    }
+    
+    if (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_OPEN) {
+        printf("Error: Invalid function call syntax in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+    
+    (*index)++;
+
+    int argument_count = 0;
+    Node* arguments = malloc(sizeof(Node) * 16); // Maximum of 16 arguments per function call
+
+    while (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_CLOSE) {
+        if (argument_count == 16) {
+            printf("Error: Invalid function call, max arguments is 16 in line %d\n", get_token(tokens, *index)->line);
+            exit(1);
+        }
+        arguments[argument_count] = parse_expression(tokens, object_list, index);
+        argument_count++;
+
+        if (get_token(tokens, *index)->type == TOKEN_COMMA) {
+            (*index)++;
+        } else {
+            break;
+        }
+    }
+
+    if (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_CLOSE) {
+        printf("Error: Invalid function call, expected `)`, found `%s` in line %d\n", get_token(tokens, *index)->value, get_token(tokens, *index)->line);
+        exit(1);
+    }
+    
+    (*index)++;
+
+    func_call->arguments = add_object(object_list, arguments, sizeof(Node) * argument_count);
+    func_call->argument_count = argument_count;
+    
+    if (arguments != NULL) {
+        free(arguments);
+    }
+}
+
+char line_contains_token(TokenList* tokens, int start, enum TokenType type) {
+    int index = start;
+    while (get_token(tokens, index)->type != TOKEN_END_OF_LINE) {
+        if (get_token(tokens, index)->type == type) {
+            return 1;
+        }
+        index++;
+    }
+    return 0;
+}
+
 void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* node) {
     Token* first_token = get_token(tokens, *index);
 
@@ -280,11 +365,17 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
         node->type = NODE_VARIABLE_DECLARATION;
         node->data = add_object(object_list, &var_decl, sizeof(VariableDeclaration));
     }
-    else if (first_token->type == TOKEN_IDENTIFIER) {
+    else if (first_token->type == TOKEN_IDENTIFIER && line_contains_token(tokens, *index, TOKEN_OPERATOR_ASSIGN)) {
         VariableAssignment var_assign;
         parse_var_assign(tokens, object_list, index, &var_assign);
         node->type = NODE_VARIABLE_ASSIGNMENT;
         node->data = add_object(object_list, &var_assign, sizeof(VariableAssignment));
+    }
+    else if (first_token->type == TOKEN_IDENTIFIER && line_contains_token(tokens, *index, TOKEN_PARENTHESIS_OPEN)) {
+        FunctionCall func_call;
+        parse_function_call(tokens, object_list, index, &func_call);
+        node->type = NODE_FUNCTION_CALL;
+        node->data = add_object(object_list, &func_call, sizeof(VariableAssignment));
     }
     else if (first_token->type == TOKEN_KEYWORD_FUN) {
         FunctionDeclaration func_decl;
@@ -311,6 +402,13 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
         node->type = NODE_RETURN_STATEMENT;
         node->data = add_object(object_list, &return_stmt, sizeof(ReturnStatement));
     }
+    else if (first_token->type == TOKEN_KEYWORD_IF) {
+        
+    }
+    else if (first_token->type == TOKEN_KEYWORD_WHILE) {
+        // TODO
+        printf("TODO: WHILE\n");
+    }
     else if (first_token->type == TOKEN_KEYWORD_END) {
         node->type = NODE_END;
         (*index)++;
@@ -336,9 +434,38 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
         node.data = (void*)token;
         (*index)++;
     } else if (token->type == TOKEN_IDENTIFIER) {
-        node.type = NODE_IDENTIFIER;
-        node.data = (void*)token;
-        (*index)++;
+        int size = 0;
+        int current_index = *index;
+        Token** scope = malloc(sizeof(Token*) * 16); // max scope depth is 16
+        while (get_token(tokens, *index)->type == TOKEN_IDENTIFIER) {
+            if (size == 16) {
+                printf("Error: Invalid variable assignment, max scope depth is 16 in line %d\n", get_token(tokens, *index)->line);
+                exit(1);
+            }
+            scope[size] = get_token(tokens, *index);
+            (*index)++;
+            size++;
+        }
+        if (get_token(tokens, *index)->type == TOKEN_PARENTHESIS_OPEN) {
+            // function call
+            *index = current_index;
+            FunctionCall func_call;
+            parse_function_call(tokens, object_list, index, &func_call);
+            node.type = NODE_FUNCTION_CALL;
+            node.data = add_object(object_list, &func_call, sizeof(FunctionCall));
+            if (scope != NULL) {
+                free(scope);
+            }
+        } else {
+            ScopedIdentifier ident;
+            ident.size = size;
+            ident.scope = add_object(object_list, scope, sizeof(Token*) * size);
+            node.type = NODE_SCOPED_IDENTIFIER;
+            node.data = add_object(object_list, &ident, sizeof(ScopedIdentifier));
+            if (scope != NULL) {
+                free(scope);
+            }
+        }
     } else if (token->type == TOKEN_PARENTHESIS_OPEN) {
         (*index)++;
         Node left = parse_expression(tokens, object_list, index);
@@ -370,7 +497,7 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
             node = left;
         }
     } else {
-        printf("Error: Invalid token expression `%s` in line %d\n", token->value, token->line);
+        printf("Error: Invalid token expression `%s` with type `%s` in line %d\n", token->value, get_token_type_name(token->type), token->line);
         exit(1);
     }
     return node;
@@ -387,7 +514,7 @@ const char* get_node_type_name(enum NodeType type) {
         case NODE_IF_STATEMENT: return "NODE_IF_STATEMENT";
         case NODE_RETURN_STATEMENT: return "NODE_RETURN_STATEMENT";
         case NODE_OPERATION: return "NODE_OPERATION";
-        case NODE_IDENTIFIER: return "NODE_IDENTIFIER";
+        case NODE_SCOPED_IDENTIFIER: return "NODE_SCOPED_IDENTIFIER";
         case NODE_CONSTANT: return "NODE_CONSTANT";
         case NODE_BODY: return "NODE_BODY";
         case NODE_EMPTY: return "NODE_EMPTY";
@@ -404,9 +531,11 @@ void debug_parser_node(Node* node) {
         Token* token = (Token*)node->data;
         printf("%s ", token->value);
     }
-    else if (node->type == NODE_IDENTIFIER) {
-        Token* token = (Token*)node->data;
-        printf("%s ", token->value);
+    else if (node->type == NODE_SCOPED_IDENTIFIER) {
+        ScopedIdentifier* scope = (ScopedIdentifier*)node->data;
+        for (int i = 0; i < scope->size; i++) {
+            printf("%s ", scope->scope[i]->value);
+        }
     }
     else if (node->type == NODE_VARIABLE_DECLARATION) {
         VariableDeclaration* var_decl = (VariableDeclaration*)node->data;
@@ -458,13 +587,29 @@ void debug_parser_node(Node* node) {
             printf("    %s %s\n", struct_decl->fields[i].name->value, struct_decl->fields[i].type->value);
         }
         printf("end");
+    } else if(node->type == NODE_FUNCTION_CALL) {
+        FunctionCall* func_call = (FunctionCall*)node->data;
+        for (int i = 0; i < func_call->scope_size; i++) {
+            printf("%s", func_call->scope[i]->value);
+            if (i < func_call->scope_size - 1) {
+                printf(" ");
+            }
+        }
+        printf("( ");
+        for (int i = 0; i < func_call->argument_count; i++) {
+            if (i > 0) {
+                printf(", ");
+            }
+            debug_parser_node(&func_call->arguments[i]);
+        }
+        printf(")");
     } else if (node->type == NODE_OPERATION) {
         Operation* operation = (Operation*)node->data;
-        printf("(");
+        printf("( ");
         debug_parser_node(operation->left);
         printf("%s ", operation->operator->value);
         debug_parser_node(operation->right);
-        printf(")");
+        printf(") ");
     }
     else {
         printf("[Error, TYPE: %s] ", get_node_type_name(node->type));

@@ -53,11 +53,10 @@ enum NodeType {
     NODE_IF_STATEMENT,
     NODE_RETURN_STATEMENT,
     NODE_OPERATION,
-    NODE_IDENTIFIER,
+    NODE_SCOPED_IDENTIFIER,
     NODE_CONSTANT,
     NODE_BODY,
     NODE_EMPTY,
-    NODE_TEMP_STRUCT_MEMBER,
     NODE_END
 };
 
@@ -105,8 +104,10 @@ typedef struct VariableAssignment_t {
 } VariableAssignment;
 
 typedef struct FunctionCall_t {
-    Token* name;
+    Token** scope;
+    int scope_size;
     Node* arguments;
+    int argument_count;
 } FunctionCall;
 
 typedef struct WhileLoop_t {
@@ -137,9 +138,10 @@ typedef struct Operation_t {
     Node* right;
 } Operation;
 
-typedef struct Identifier_t {
-    Token* name;
-} Identifier;
+typedef struct ScopedIdentifier_t {
+    Token** scope;
+    int size;
+} ScopedIdentifier;
 
 typedef struct Constant_t {
     Token* value;

@@ -1,11 +1,19 @@
-let before int
 struct Color
     r byte
     g byte
     b byte
     a byte
 end
-let after Color
+fun Color init(r byte, g byte, b byte, a byte) Color
+    let c Color
+    c r = r
+    c g = g
+    c b = b
+    c a = a
+    return a
+end
+let color Color = Color init(10, 20, 30, 40)
+into this function()
 ~
 
 fun add(left int, right int) int
@@ -15,8 +23,6 @@ end
 
 let result int = add(5, 10)
 print("5 + 10 = ", result, " math!\n")
-
-# can not use print(add(5, 10)) because functions do not support inline calls
 
 # output:
 # 5 + 10 = 15 math!
@@ -68,7 +74,7 @@ fun Color set_red(self Color, value byte) void
 end
 
 let my_color Color = Color init(0, 0, 0)
-my_color set_red(my_color, 255)
+my_color set_red(255)
 
 let b byte = 255
 let i int = 12345

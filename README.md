@@ -24,8 +24,6 @@ end
 let result int = add(5, 10)
 print("5 + 10 = ", result, " math!\n")
 
-# can not use print(add(5, 10)) because functions do not support inline calls
-
 # output:
 # 5 + 10 = 15 math!
 ```
@@ -88,7 +86,7 @@ fun Color set_red(self Color, value byte) void
 end
 
 let my_color Color = Color init(0, 0, 0)
-my_color set_red(my_color, 255)
+my_color set_red(255)
 ```
 
 **Data Types**
