@@ -118,13 +118,14 @@ typedef struct WhileLoop_t {
 typedef struct ElifIfStatement_t {
     Node condition;
     NodeList* body;
-    struct ElifIfStatement_t* next;
 } ElifIfStatement;
 
 typedef struct IfStatement_t {
     Node condition;
     NodeList* body;
-    ElifIfStatement* elif;
+    ElifIfStatement* elifs;
+    int elif_count;
+    char has_else;
     NodeList* else_body;
 } IfStatement;
 

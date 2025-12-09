@@ -345,6 +345,89 @@ void parse_function_call(TokenList* tokens, ObjectList* object_list, int* index,
     }
 }
 
+void parse_if(TokenList* tokens, ObjectList* object_list, int* index, IfStatement* if_stmt) {
+    if (get_token(tokens, *index)->type != TOKEN_KEYWORD_IF) {
+        printf("Error: Invalid if statement in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+    (*index)++;
+
+    if_stmt->condition = parse_expression(tokens, object_list, index);
+
+    if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
+        printf("Error: Invalid if statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+
+    (*index)++;
+
+    NodeList* body = create_node_list();
+    parser(tokens, object_list, body, index);
+    if_stmt->body = body;
+
+    if_stmt->elif_count = 0;
+    if_stmt->elifs = NULL;
+    if_stmt->else_body = NULL;
+
+    if (get_token(tokens, *index - 1)->type == TOKEN_KEYWORD_END) {
+        return;
+    }
+
+    if (get_token(tokens, *index)->type == TOKEN_KEYWORD_ELSE) {
+        (*index)++;
+        
+        NodeList* else_body = create_node_list();
+        parser(tokens, object_list, else_body, index);
+        if_stmt->else_body = else_body;
+        
+        return;
+    }
+
+    int elif_count = 0;
+    ElifIfStatement* elifs = malloc(sizeof(ElifIfStatement) * 64); // Maximum of 64 elifs per if statement
+
+    while (get_token(tokens, *index)->type == TOKEN_KEYWORD_ELIF) {
+        if (elif_count == 64) {
+            printf("Error: Invalid if statement, max elifs is 64 in line %d\n", get_token(tokens, *index)->line);
+            exit(1);
+        }
+
+        (*index)++;
+        
+        ElifIfStatement elif;
+
+        elif.condition = parse_expression(tokens, object_list, index);
+        if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
+            printf("Error: Invalid elif statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->line);
+            exit(1);
+        }
+        (*index)++;
+
+        NodeList* elif_body = create_node_list();
+        parser(tokens, object_list, elif_body, index);
+        elif.body = elif_body;
+        elifs[elif_count] = elif;
+        elif_count++;
+    }
+
+    if (elif_count > 0) {
+        if_stmt->elifs = add_object(object_list, elifs, sizeof(ElifIfStatement) * elif_count);
+        if_stmt->elif_count = elif_count;
+
+        if (elifs != NULL) {
+            free(elifs);
+        }
+    }
+
+    if (get_token(tokens, *index)->type == TOKEN_KEYWORD_ELSE) {
+        (*index)++;
+        
+        NodeList* else_body = create_node_list();
+        parser(tokens, object_list, else_body, index);
+        if_stmt->else_body = else_body;
+    }
+}
+
 char line_contains_token(TokenList* tokens, int start, enum TokenType type) {
     int index = start;
     while (get_token(tokens, index)->type != TOKEN_END_OF_LINE) {
@@ -403,7 +486,18 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
         node->data = add_object(object_list, &return_stmt, sizeof(ReturnStatement));
     }
     else if (first_token->type == TOKEN_KEYWORD_IF) {
-        
+        IfStatement if_stmt;
+        parse_if(tokens, object_list, index, &if_stmt);
+        node->type = NODE_IF_STATEMENT;
+        node->data = add_object(object_list, &if_stmt, sizeof(IfStatement));
+    }
+    else if (first_token->type == TOKEN_KEYWORD_ELSE) {
+        node->type = NODE_END; // it will be handled by the parse_if function
+        // don't increment index
+    }
+    else if (first_token->type == TOKEN_KEYWORD_ELIF) {
+        node->type = NODE_END; // it will be handled by the parse_if function
+        // don't increment index
     }
     else if (first_token->type == TOKEN_KEYWORD_WHILE) {
         // TODO
@@ -529,7 +623,11 @@ const char* get_node_type_name(enum NodeType type) {
 void debug_parser_node(Node* node) {
     if (node->type == NODE_CONSTANT) {
         Token* token = (Token*)node->data;
-        printf("%s ", token->value);
+        if (token->type == TOKEN_CONSTANT_STRING) {
+            printf("\"%s\" ", token->value);
+        } else {
+            printf("%s ", token->value);
+        }
     }
     else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scope = (ScopedIdentifier*)node->data;
@@ -610,6 +708,36 @@ void debug_parser_node(Node* node) {
         printf("%s ", operation->operator->value);
         debug_parser_node(operation->right);
         printf(") ");
+    } else if (node->type == NODE_IF_STATEMENT) {
+        IfStatement* if_stmt = (IfStatement*)node->data;
+        printf("if ");
+        debug_parser_node(&if_stmt->condition);
+        printf("\n");
+        for (int i = 0; i < if_stmt->body->size; i++) {
+            debug_parser_node(get_node(if_stmt->body, i));
+            printf("\n");
+        }
+        if (if_stmt->elif_count > 0) {
+            for (int i = 0; i < if_stmt->elif_count; i++) {
+                ElifIfStatement* elif = &if_stmt->elifs[i];
+                printf("elif ");
+                Node condition = elif->condition;
+                debug_parser_node(&condition);
+                printf("\n");
+                for (int j = 0; j < elif->body->size; j++) {
+                    debug_parser_node(get_node(elif->body, j));
+                    printf("\n");
+                }
+            }
+        }
+        if (if_stmt->else_body != NULL && if_stmt->else_body->size > 0) {
+            printf("else\n");
+            for (int i = 0; i < if_stmt->else_body->size; i++) {
+                debug_parser_node(get_node(if_stmt->else_body, i));
+                printf("\n");
+            }
+        }
+        printf("end");
     }
     else {
         printf("[Error, TYPE: %s] ", get_node_type_name(node->type));

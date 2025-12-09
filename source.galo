@@ -1,19 +1,13 @@
-struct Color
-    r byte
-    g byte
-    b byte
-    a byte
+if this 
+    print("hello")
+    if (true or false) 
+        taco = 1
+    end
+elif that
+    print("ay", 00)
+else 
+    print(230)
 end
-fun Color init(r byte, g byte, b byte, a byte) Color
-    let c Color
-    c r = r
-    c g = g
-    c b = b
-    c a = a
-    return a
-end
-let color Color = Color init(10, 20, 30, 40)
-into this function()
 ~
 
 fun add(left int, right int) int
