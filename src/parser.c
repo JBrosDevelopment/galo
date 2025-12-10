@@ -428,6 +428,27 @@ void parse_if(TokenList* tokens, ObjectList* object_list, int* index, IfStatemen
     }
 }
 
+void parse_while(TokenList* tokens, ObjectList* object_list, int* index, WhileLoop* while_loop) {
+    if (get_token(tokens, *index)->type != TOKEN_KEYWORD_WHILE) {
+        printf("Error: Invalid while statement in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+    (*index)++;
+
+    while_loop->condition = parse_expression(tokens, object_list, index);
+
+    if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
+        printf("Error: Invalid while statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+
+    (*index)++;
+
+    NodeList* body = create_node_list();
+    parser(tokens, object_list, body, index);
+    while_loop->body = body;
+}
+
 char line_contains_token(TokenList* tokens, int start, enum TokenType type) {
     int index = start;
     while (get_token(tokens, index)->type != TOKEN_END_OF_LINE) {
@@ -501,7 +522,10 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
     }
     else if (first_token->type == TOKEN_KEYWORD_WHILE) {
         // TODO
-        printf("TODO: WHILE\n");
+        WhileLoop while_loop;
+        parse_while(tokens, object_list, index, &while_loop);
+        node->type = NODE_WHILE_LOOP;
+        node->data = add_object(object_list, &while_loop, sizeof(WhileLoop));
     }
     else if (first_token->type == TOKEN_KEYWORD_END) {
         node->type = NODE_END;
@@ -736,6 +760,16 @@ void debug_parser_node(Node* node) {
                 debug_parser_node(get_node(if_stmt->else_body, i));
                 printf("\n");
             }
+        }
+        printf("end");
+    } else if(node->type == NODE_WHILE_LOOP) {
+        WhileLoop* while_loop = (WhileLoop*)node->data;
+        printf("while ");
+        debug_parser_node(&while_loop->condition);
+        printf("\n");
+        for (int i = 0; i < while_loop->body->size; i++) {
+            debug_parser_node(get_node(while_loop->body, i));
+            printf("\n");
         }
         printf("end");
     }

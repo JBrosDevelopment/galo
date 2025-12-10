@@ -1,15 +1,3 @@
-if this 
-    print("hello")
-    if (true or false) 
-        taco = 1
-    end
-elif that
-    print("ay", 00)
-else 
-    print(230)
-end
-~
-
 fun add(left int, right int) int
     # inside parenthesis because all operations require parenthesis to define order of operations
     return (left + right) 
