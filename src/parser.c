@@ -357,6 +357,7 @@ void parse_if(TokenList* tokens, ObjectList* object_list, int* index, IfStatemen
     }
     (*index)++;
 
+    if_stmt->line = get_token(tokens, *index)->line;
     if_stmt->condition = parse_expression(tokens, object_list, index);
 
     if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
@@ -401,6 +402,7 @@ void parse_if(TokenList* tokens, ObjectList* object_list, int* index, IfStatemen
         
         ElifIfStatement elif;
 
+        elif.line = get_token(tokens, *index)->line;
         elif.condition = parse_expression(tokens, object_list, index);
         if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
             printf("Error: Invalid elif statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->value, get_token(tokens, *index)->line);
@@ -440,6 +442,7 @@ void parse_while(TokenList* tokens, ObjectList* object_list, int* index, WhileLo
     }
     (*index)++;
 
+    while_loop->line = get_token(tokens, *index)->line;
     while_loop->condition = parse_expression(tokens, object_list, index);
 
     if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
@@ -591,6 +594,28 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
         }
     } else if (token->type == TOKEN_PARENTHESIS_OPEN) {
         (*index)++;
+        if (get_token(tokens, *index)->type == TOKEN_KEYWORD_NOT) {
+            Token* op = get_token(tokens, *index);
+            (*index)++;
+            
+            Node inner = parse_expression(tokens, object_list, index);
+            if (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_CLOSE) {
+                printf("Error: Invalid token expression `%s` expected `)` for not operation in line %d\n", token->value, token->line);
+                exit(1);
+            }
+            (*index)++;
+
+            Operation operation;
+            operation.is_not_operator = 1;
+            operation.left = add_object(object_list, &inner, sizeof(Node));
+            operation.right = NULL;
+            operation.operator = op;
+
+            node.type = NODE_OPERATION;
+            node.data = add_object(object_list, &operation, sizeof(Operation));
+            return node;
+        }
+        
         Node left = parse_expression(tokens, object_list, index);
         if (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_CLOSE) {
             Token* op = get_token(tokens, *index);
@@ -609,6 +634,7 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
             (*index)++;
 
             Operation operation;
+            operation.is_not_operator = 0;
             operation.left = add_object(object_list, &left, sizeof(Node));
             operation.right = add_object(object_list, &right, sizeof(Node));
             operation.operator = op;
@@ -731,6 +757,12 @@ void debug_parser_node(Node* node) {
         printf(")");
     } else if (node->type == NODE_OPERATION) {
         Operation* operation = (Operation*)node->data;
+        if (operation->is_not_operator) {
+            printf("( not ");
+            debug_parser_node(operation->left);
+            printf(") ");
+            return;
+        }
         printf("( ");
         debug_parser_node(operation->left);
         printf("%s ", operation->operator->value);

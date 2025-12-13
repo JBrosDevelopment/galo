@@ -86,7 +86,7 @@ fun Color set_red(self Color, value byte) void
 end
 
 let my_color Color = Color init(0, 0, 0)
-my_color set_red(255)
+Color set_red(my_color, 255)
 ```
 
 **Data Types**
@@ -95,7 +95,7 @@ byte, int, float, bool, string, and user-defined structs are supported.
 ```
 let b byte = 255
 let i int = 12345
-let b2 byte = (b + i) # this will raise an error because byte + int results in an int
+let b2 byte = (b + i) # this will not raise an error because validator doesn't check bytes, overflow over 255 will rap back to 0
 let f float = 3.14
 let s string = f # raises an error, cannot assign float to string
 ```

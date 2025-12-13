@@ -15,6 +15,7 @@ enum TokenType {
     TOKEN_KEYWORD_ELSE,
     TOKEN_KEYWORD_RETURN,
     TOKEN_KEYWORD_WHILE,
+    TOKEN_KEYWORD_NOT,
     TOKEN_OPERATOR_ASSIGN,
     TOKEN_OPERATOR_ARITHMETIC,
     TOKEN_OPERATOR_COMPARISON,
@@ -119,11 +120,13 @@ typedef struct FunctionCall_t {
 typedef struct WhileLoop_t {
     Node condition;
     NodeList* body;
+    int line;
 } WhileLoop;
 
 typedef struct ElifIfStatement_t {
     Node condition;
     NodeList* body;
+    int line;
 } ElifIfStatement;
 
 typedef struct IfStatement_t {
@@ -133,6 +136,7 @@ typedef struct IfStatement_t {
     int elif_count;
     char has_else;
     NodeList* else_body;
+    int line;
 } IfStatement;
 
 typedef struct ReturnStatement_t {
@@ -143,6 +147,7 @@ typedef struct Operation_t {
     Token* operator;
     Node* left;
     Node* right;
+    char is_not_operator;
 } Operation;
 
 NodeList* create_node_list();

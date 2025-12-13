@@ -116,6 +116,11 @@ void lexer(const char* source_code, TokenList* token_list) {
             exit(1);
             break;
         case '+': case '-': case '*': case '/': case '%':
+            if (source_code[i] == '-' && start_of_token == -1 && (source_code[i + 1] == '0' || source_code[i + 1] == '1' || source_code[i + 1] == '2' || source_code[i + 1] == '3' || source_code[i + 1] == '4' || source_code[i + 1] == '5' || source_code[i + 1] == '6' || source_code[i + 1] == '7' || source_code[i + 1] == '8' || source_code[i + 1] == '9' || source_code[i + 1] == '.')) {
+                start_of_token = i;
+                lexing_code = LEXING_CODE_NUMBER;
+                break;
+            }
             token.type = TOKEN_OPERATOR_ARITHMETIC;
             token.value = source_code[i] == '+' ? "+" :
                           source_code[i] == '-' ? "-" :
@@ -207,6 +212,15 @@ void lexer_add_word_or_number_token(const char* source_code, int i, int* start_o
                 is_float++;
                 continue;
             }
+            if (token_value[j] == '-') {
+                if (j == 0) {
+                    continue;
+                }
+                else {
+                    printf("Lexer Error: Invalid number format: `%s` in line %d\n", token_value, line);
+                    exit(1);
+                }
+            }
             if (token_value[j] < '0' || token_value[j] > '9') {
                 // Handle error: invalid number format
                 printf("Lexer Error: Invalid number format: `%s` in line %d\n", token_value, line);
@@ -215,7 +229,7 @@ void lexer_add_word_or_number_token(const char* source_code, int i, int* start_o
         }
         *lexing_code = LEXING_CODE_NONE;
 
-        if (is_float > 0) {
+        if (is_float == 1) {
             token->type = TOKEN_CONSTANT_FLOAT;
             return;
         } else if (is_float == 0) {
@@ -260,10 +274,14 @@ void lexer_add_word_or_number_token(const char* source_code, int i, int* start_o
         token->type = TOKEN_NATIVE_TYPE;
     } else if (strcmp(token_value, "byte") == 0) {
         token->type = TOKEN_NATIVE_TYPE;
+    } else if (strcmp(token_value, "void") == 0) {
+        token->type = TOKEN_NATIVE_TYPE;
     } else if (strcmp(token_value, "and") == 0) {
         token->type = TOKEN_OPERATOR_LOGICAL;
     } else if (strcmp(token_value, "or") == 0) {
         token->type = TOKEN_OPERATOR_LOGICAL;
+    } else if (strcmp(token_value, "not") == 0) {
+        token->type = TOKEN_KEYWORD_NOT;
     } else {
         token->type = TOKEN_IDENTIFIER;
     }
@@ -287,6 +305,7 @@ const char* get_token_type_name(enum TokenType type) {
         case TOKEN_KEYWORD_ELSE: return "TOKEN_KEYWORD_ELSE"; 
         case TOKEN_KEYWORD_RETURN: return "TOKEN_KEYWORD_RETURN"; 
         case TOKEN_KEYWORD_WHILE: return "TOKEN_KEYWORD_WHILE"; 
+        case TOKEN_KEYWORD_NOT: return "TOKEN_KEYWORD_NOT";
         case TOKEN_OPERATOR_ASSIGN: return "TOKEN_OPERATOR_ASSIGN"; 
         case TOKEN_OPERATOR_ARITHMETIC: return "TOKEN_OPERATOR_ARITHMETIC"; 
         case TOKEN_OPERATOR_COMPARISON: return "TOKEN_OPERATOR_COMPARISON"; 

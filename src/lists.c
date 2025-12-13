@@ -4,6 +4,7 @@
 #include "galo_headers.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 TokenList* create_token_list() {
     TokenList* token_list = (TokenList*)malloc(sizeof(TokenList));
@@ -76,13 +77,15 @@ void add_int(IntList* int_list, int value) {
 }
 int* get_int(IntList* int_list, int index) {
     if (index < 0 || index >= int_list->size) {
-        return NULL;
+        printf("Int index out of bounds: %d\n", index);
+        exit(1);
     }
     return &int_list->int_list[index];
 }
 void remove_int_index(IntList* int_list, int index) {
     if (index < 0 || index >= int_list->size) {
-        return;
+        printf("Int index out of bounds: %d\n", index);
+        exit(1);
     }
     for (int i = index; i < int_list->size - 1; i++) {
         int_list->int_list[i] = int_list->int_list[i + 1];
@@ -96,6 +99,8 @@ void remove_int_value(IntList* int_list, int value) {
             return;
         }
     }
+    printf("Int value not found: %d\n", value);
+    exit(1);
 }
 
 char contains_int(IntList* int_list, int value) {
