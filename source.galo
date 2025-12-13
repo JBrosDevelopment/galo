@@ -1,6 +1,8 @@
-let x int = 22
-let y int = 8
-x = y
+fun add(left int, right int) int
+    return (left + right)
+end
+
+let result int = add(5, 324)
 
 ~
 

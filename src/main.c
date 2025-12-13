@@ -21,7 +21,7 @@ int main() {
     
     printf("parsing...\n");
     parser(token_list, object_list, ast, &index);
-    //debug_parser(ast);
+    debug_parser(ast);
 
     Validator_Object validator_object = create_validator_object();
     printf("validating...\n");

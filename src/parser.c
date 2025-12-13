@@ -639,7 +639,6 @@ const char* get_node_type_name(enum NodeType type) {
         case NODE_OPERATION: return "NODE_OPERATION";
         case NODE_SCOPED_IDENTIFIER: return "NODE_SCOPED_IDENTIFIER";
         case NODE_CONSTANT: return "NODE_CONSTANT";
-        case NODE_BODY: return "NODE_BODY";
         case NODE_EMPTY: return "NODE_EMPTY";
         case NODE_END: return "NODE_END";
     }

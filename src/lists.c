@@ -80,7 +80,7 @@ int* get_int(IntList* int_list, int index) {
     }
     return &int_list->int_list[index];
 }
-void remove_int(IntList* int_list, int index) {
+void remove_int_index(IntList* int_list, int index) {
     if (index < 0 || index >= int_list->size) {
         return;
     }
@@ -88,6 +88,14 @@ void remove_int(IntList* int_list, int index) {
         int_list->int_list[i] = int_list->int_list[i + 1];
     }
     int_list->size--;
+}
+void remove_int_value(IntList* int_list, int value) {
+    for (int i = 0; i < int_list->size; i++) {
+        if (int_list->int_list[i] == value) {
+            remove_int_index(int_list, i);
+            return;
+        }
+    }
 }
 
 char contains_int(IntList* int_list, int value) {

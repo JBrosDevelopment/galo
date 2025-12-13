@@ -55,7 +55,6 @@ enum NodeType {
     NODE_OPERATION,
     NODE_SCOPED_IDENTIFIER,
     NODE_CONSTANT,
-    NODE_BODY,
     NODE_EMPTY,
     NODE_END
 };
@@ -161,7 +160,8 @@ IntList* create_int_list();
 void free_int_list(IntList* int_list);
 void add_int(IntList* int_list, int value);
 int* get_int(IntList* int_list, int index);
-void remove_int(IntList* int_list, int index);
+void remove_int_index(IntList* int_list, int index);
+void remove_int_value(IntList* int_list, int value);
 char contains_int(IntList* int_list, int value);
 
 typedef struct ObjectList_t {
