@@ -63,6 +63,7 @@ void parse_var_decl(TokenList* tokens, ObjectList* object_list, int* index, Vari
         exit(1);
     }
     var_decl->type = var_type;
+    var_decl->id = -1;
 
     (*index)++;
 
@@ -103,8 +104,10 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
 
     Token** var_scope_address = add_object(object_list, var_scope, sizeof(Token*) * size);
 
-    var_assign->scope_size = size;
-    var_assign->scope = var_scope_address;
+    ScopedIdentifier scoped_identifier;
+    scoped_identifier.scope = var_scope_address;
+    scoped_identifier.size = size;
+    var_assign->identifier = scoped_identifier;
 
     if (var_scope != NULL) {
         free(var_scope);
@@ -198,6 +201,7 @@ void parse_function(TokenList* tokens, ObjectList* object_list, int* index, Func
 
     func_decl->name = func_name;
     func_decl->struct_implementation = struct_implementation;
+    func_decl->id = -1;
 
     if (get_token(tokens, *index)->type != TOKEN_PARENTHESIS_OPEN) {
         printf("Error: Invalid function declaration in line %d\n", get_token(tokens, *index)->line);
@@ -274,6 +278,7 @@ void parse_struct(TokenList* tokens, ObjectList* object_list, int* index, Struct
 
     struct_decl->fields = field_address;
     struct_decl->field_count = field_count;
+    struct_decl->id = -1;
 }
 
 void parse_function_call(TokenList* tokens, ObjectList* object_list, int* index, FunctionCall* func_call) {
@@ -355,7 +360,7 @@ void parse_if(TokenList* tokens, ObjectList* object_list, int* index, IfStatemen
     if_stmt->condition = parse_expression(tokens, object_list, index);
 
     if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
-        printf("Error: Invalid if statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->line);
+        printf("Error: Invalid if statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->value, get_token(tokens, *index)->line);
         exit(1);
     }
 
@@ -398,7 +403,7 @@ void parse_if(TokenList* tokens, ObjectList* object_list, int* index, IfStatemen
 
         elif.condition = parse_expression(tokens, object_list, index);
         if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
-            printf("Error: Invalid elif statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->line);
+            printf("Error: Invalid elif statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->value, get_token(tokens, *index)->line);
             exit(1);
         }
         (*index)++;
@@ -438,7 +443,7 @@ void parse_while(TokenList* tokens, ObjectList* object_list, int* index, WhileLo
     while_loop->condition = parse_expression(tokens, object_list, index);
 
     if (get_token(tokens, *index)->type != TOKEN_END_OF_LINE) {
-        printf("Error: Invalid while statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->line);
+        printf("Error: Invalid while statement, expected end of line but found `%s` in line %d\n", get_token(tokens, *index)->value, get_token(tokens, *index)->line);
         exit(1);
     }
 
@@ -670,8 +675,8 @@ void debug_parser_node(Node* node) {
     }
     else if (node->type == NODE_VARIABLE_ASSIGNMENT) {
         VariableAssignment* var_assign = (VariableAssignment*)node->data;
-        for (int i = 0; i < var_assign->scope_size; i++) {
-            printf("%s ", var_assign->scope[i]->value);
+        for (int i = 0; i < var_assign->identifier.size; i++) {
+            printf("%s ", var_assign->identifier.scope[i]->value);
         }
         printf("= ");
         debug_parser_node(&var_assign->value);

@@ -80,6 +80,24 @@ int* get_int(IntList* int_list, int index) {
     }
     return &int_list->int_list[index];
 }
+void remove_int(IntList* int_list, int index) {
+    if (index < 0 || index >= int_list->size) {
+        return;
+    }
+    for (int i = index; i < int_list->size - 1; i++) {
+        int_list->int_list[i] = int_list->int_list[i + 1];
+    }
+    int_list->size--;
+}
+
+char contains_int(IntList* int_list, int value) {
+    for (int i = 0; i < int_list->size; i++) {
+        if (int_list->int_list[i] == value) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 
 ObjectList* create_object_list() {

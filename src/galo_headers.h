@@ -75,6 +75,7 @@ typedef struct VariableDeclaration_t {
     Token* name;
     Token* type;
     Node value;
+    int id;
 } VariableDeclaration;
 
 typedef struct Parameter_t {
@@ -89,17 +90,23 @@ typedef struct FunctionDeclaration_t {
     Token* return_type;
     Token* struct_implementation;
     NodeList* body;
+    int id;
 } FunctionDeclaration;
 
 typedef struct StructDeclaration_t {
     Token* name;
     Parameter* fields;
     int field_count;
+    int id;
 } StructDeclaration;
 
-typedef struct VariableAssignment_t {
+typedef struct ScopedIdentifier_t {
     Token** scope;
-    int scope_size;
+    int size;
+} ScopedIdentifier;
+
+typedef struct VariableAssignment_t {
+    ScopedIdentifier identifier;
     Node value;
 } VariableAssignment;
 
@@ -139,15 +146,6 @@ typedef struct Operation_t {
     Node* right;
 } Operation;
 
-typedef struct ScopedIdentifier_t {
-    Token** scope;
-    int size;
-} ScopedIdentifier;
-
-typedef struct Constant_t {
-    Token* value;
-} Constant;
-
 NodeList* create_node_list();
 void free_node_list(NodeList* node_list);
 void add_node(NodeList* node_list, Node node);
@@ -163,6 +161,8 @@ IntList* create_int_list();
 void free_int_list(IntList* int_list);
 void add_int(IntList* int_list, int value);
 int* get_int(IntList* int_list, int index);
+void remove_int(IntList* int_list, int index);
+char contains_int(IntList* int_list, int value);
 
 typedef struct ObjectList_t {
     void** objects;
@@ -170,6 +170,13 @@ typedef struct ObjectList_t {
     int capacity;
 } ObjectList;
 
+typedef struct Validator_Object_t {
+    ObjectList* functions;
+    ObjectList* structs;
+    ObjectList* variables;
+    IntList* active_variables;
+    int last_id;
+} Validator_Object;
 
 ObjectList* create_object_list();
 void free_object_list(ObjectList* object_list);
@@ -188,5 +195,9 @@ const char* get_node_type_name(enum NodeType type);
 void debug_parser(NodeList* ast);
 void debug_parser_node(Node* node);
 
-void validator();
+Validator_Object create_validator_object();
+void free_validator_object(Validator_Object* validator_object);
+void validator(NodeList* ast, Validator_Object* validator_object);
+void debug_validator(Validator_Object* validator_object);
+
 void run();

@@ -21,14 +21,17 @@ int main() {
     
     printf("parsing...\n");
     parser(token_list, object_list, ast, &index);
-    debug_parser(ast);
+    //debug_parser(ast);
 
+    Validator_Object validator_object = create_validator_object();
     printf("validating...\n");
-    validator();
-
+    validator(ast, &validator_object);
+    debug_validator(&validator_object);
+    
     printf("runnning...\n");
     run();
 
+    free_validator_object(&validator_object);
     free_node_list(ast);
     free_object_list(object_list);
     free_token_list(token_list);
