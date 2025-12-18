@@ -13,9 +13,35 @@
 #define LEXING_CODE_COMMENT 4
 #define LEXING_CODE_END_LEXING 5
 
-void lexer_add_word_or_number_token(const char* source_code, int i, int* start_of_token, char* lexing_code, int line, Token* token); // Forward declaration
+void lexer_add_word_or_number_token(const char* source_code, char* file_name, int i, int* start_of_token, char* lexing_code, int line, Token* token); // Forward declaration
 
-void lexer(const char* source_code, TokenList* token_list) {
+void lexer_linker(FileList* source_code_file_names, FileList* source_code_files, TokenList* token_list) {
+    for (int i = 0; i < source_code_files->size; i++) {
+        char* source_code = get_file(source_code_files, i);
+        char* file_name = get_file(source_code_file_names, i);
+        lexer(source_code, file_name, token_list);
+
+        // Insert END_OF_LINE token between files
+        Token eol;
+        eol.type = TOKEN_END_OF_LINE;
+        eol.value = "\n";
+        eol.line = -1;
+        eol.column = -1;
+
+        add_token(token_list, eol);
+    }
+
+    // Insert EOF token
+    Token eof;
+    eof.type = TOKEN_EOF;
+    eof.value = "";
+    eof.line = -1;
+    eof.column = -1;
+
+    add_token(token_list, eof);
+}
+
+void lexer(const char* source_code, char* file_name, TokenList* token_list) {
     int start_of_token = -1;
     char lexing_code = LEXING_CODE_NONE;
     int line = 1;
@@ -53,12 +79,12 @@ void lexer(const char* source_code, TokenList* token_list) {
             }
             continue;
         } else if (lexing_code == LEXING_CODE_NUMBER && (source_code[i] < '0' || source_code[i] > '9') && source_code[i] != '.') {
-            lexer_add_word_or_number_token(source_code, i, &start_of_token, &lexing_code, line, &token);
+            lexer_add_word_or_number_token(source_code, file_name, i, &start_of_token, &lexing_code, line, &token);
             add_token(token_list, token);
             lexing_code = LEXING_CODE_NONE;
             token.column = column;
         } else if (lexing_code == LEXING_CODE_WORD && !((source_code[i] >= 'A' && source_code[i] <= 'Z') || (source_code[i] >= 'a' && source_code[i] <= 'z') || (source_code[i] >= '0' && source_code[i] <= '9')) && source_code[i] != '_') {
-            lexer_add_word_or_number_token(source_code, i, &start_of_token, &lexing_code, line, &token);
+            lexer_add_word_or_number_token(source_code, file_name, i, &start_of_token, &lexing_code, line, &token);
             add_token(token_list, token);
             lexing_code = LEXING_CODE_NONE;
             token.column = column;
@@ -112,7 +138,7 @@ void lexer(const char* source_code, TokenList* token_list) {
                 i++;
                 break;
             }
-            printf("Lexer Error: Unexpected character '!' in line %d\n", line);
+            printf("Lexer Error: Unexpected character '!' in line %d in file %s\n", line, file_name);
             exit(1);
             break;
         case '+': case '-': case '*': case '/': case '%':
@@ -178,25 +204,26 @@ void lexer(const char* source_code, TokenList* token_list) {
     }
 
     if (lexing_code == LEXING_CODE_STRING) {
-        printf("Lexer Error: Unterminated string literal in line %d\n", line);
+        printf("Lexer Error: Unterminated string literal in line %d in file %s\n", line, file_name);
         exit(1);
     } else if (lexing_code == LEXING_CODE_NUMBER || lexing_code == LEXING_CODE_WORD) {
         Token token;
         token.column = column;
         token.line = line;
-        lexer_add_word_or_number_token(source_code, i, &start_of_token, &lexing_code, line, &token);
+        lexer_add_word_or_number_token(source_code, file_name, i, &start_of_token, &lexing_code, line, &token);
         add_token(token_list, token);
     }
 
-    Token eof_token;
-    eof_token.column = column;
-    eof_token.line = line;
-    eof_token.type = TOKEN_EOF;
-    eof_token.value = "\0";
-    add_token(token_list, eof_token);
+    // taken care of by the lexer_linker
+    // Token eof_token;
+    // eof_token.column = column;
+    // eof_token.line = line;
+    // eof_token.type = TOKEN_EOF;
+    // eof_token.value = "\0";
+    // add_token(token_list, eof_token);
 }
 
-void lexer_add_word_or_number_token(const char* source_code, int i, int* start_of_token, char* lexing_code, int line, Token* token) {
+void lexer_add_word_or_number_token(const char* source_code, char* file_name, int i, int* start_of_token, char* lexing_code, int line, Token* token) {
     int length = i - *start_of_token;
     char* token_value = (char*)malloc(length + 1);
     strncpy(token_value, &source_code[*start_of_token], length);
@@ -217,13 +244,13 @@ void lexer_add_word_or_number_token(const char* source_code, int i, int* start_o
                     continue;
                 }
                 else {
-                    printf("Lexer Error: Invalid number format: `%s` in line %d\n", token_value, line);
+                    printf("Lexer Error: Invalid number format: `%s` in line %d in file %s\n", token_value, line, file_name);
                     exit(1);
                 }
             }
             if (token_value[j] < '0' || token_value[j] > '9') {
                 // Handle error: invalid number format
-                printf("Lexer Error: Invalid number format: `%s` in line %d\n", token_value, line);
+                printf("Lexer Error: Invalid number format: `%s` in line %d in file %s\n", token_value, line, file_name);
                 exit(1);
             }
         }
@@ -237,7 +264,7 @@ void lexer_add_word_or_number_token(const char* source_code, int i, int* start_o
             return;
         } else {
             // Handle error: multiple decimal points
-            printf("Lexer Error: Invalid float format: `%s` in line %d\n", token_value, line);
+            printf("Lexer Error: Invalid float format: `%s` in line %d in file %s\n", token_value, line, file_name);
             exit(1);
         }
     } 

@@ -1,0 +1,37 @@
+fun add(l int, r int) int
+    return (l + r)
+end
+
+fun sub(l int, r int) int
+    return (l - r)
+end
+
+# doesnt work yet but thinking about implemnting define keyword
+#define fun string length(self string) int
+#define fun string index(self string, int index) byte
+#define fun string contains(value string, sub string) bool
+#define fun string startswith(value string, check string) bool
+#define fun string endswith(value string, check string) bool
+#define fun string sub(value string, start int, end int) string
+#
+#define struct list
+#    type Type
+#end
+#define fun init(type Type) list
+#define fun size(self list) int
+#define fun add(self list, value list type) void
+#define fun get(self list, index int) list type
+#define fun clear(self list) void
+#define fun set(self list, index int, value list typewha) void
+#
+#define struct map
+#    key_type Type
+#    value_type Type
+#end
+#
+#define fun init(map key_type Type, map value_type Type)
+#define fun set(self map, key map key_type, value map value_type) void
+#define fun get(self map, key map key_type) map value_type
+#define fun has(self map, key map key_type) bool
+#define fun remove(self map, key map key_type) bool
+#define fun clear(self map) void

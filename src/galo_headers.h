@@ -1,3 +1,7 @@
+/////////////////////////////////////////////////////////////////////
+// LEXER
+/////////////////////////////////////////////////////////////////////
+
 enum TokenType {
     TOKEN_EOF,
     TOKEN_IDENTIFIER,
@@ -39,10 +43,9 @@ typedef struct TokenList_t {
     int capacity;
 } TokenList;
 
-TokenList* create_token_list();
-void free_token_list(TokenList* token_list);
-void add_token(TokenList* token_list, Token token);
-Token* get_token(TokenList* token_list, int index);
+/////////////////////////////////////////////////////////////////////
+// PARSER
+/////////////////////////////////////////////////////////////////////
 
 enum NodeType {
     NODE_VARIABLE_DECLARATION,
@@ -150,16 +153,32 @@ typedef struct Operation_t {
     char is_not_operator;
 } Operation;
 
-NodeList* create_node_list();
-void free_node_list(NodeList* node_list);
-void add_node(NodeList* node_list, Node node);
-Node* get_node(NodeList* node_list, int index);
+/////////////////////////////////////////////////////////////////////
+// LISTS 
+/////////////////////////////////////////////////////////////////////
 
 typedef struct IntList_t {
     int* int_list;
     int size;
     int capacity;
 } IntList;
+
+typedef struct ObjectList_t {
+    void** objects;
+    int size;
+    int capacity;
+} ObjectList;
+
+typedef struct FileList_t {
+    char** files;
+    int size;
+    int capacity;
+} FileList;
+
+TokenList* create_token_list();
+void free_token_list(TokenList* token_list);
+void add_token(TokenList* token_list, Token token);
+Token* get_token(TokenList* token_list, int index);
 
 IntList* create_int_list();
 void free_int_list(IntList* int_list);
@@ -169,11 +188,25 @@ void remove_int_index(IntList* int_list, int index);
 void remove_int_value(IntList* int_list, int value);
 char contains_int(IntList* int_list, int value);
 
-typedef struct ObjectList_t {
-    void** objects;
-    int size;
-    int capacity;
-} ObjectList;
+NodeList* create_node_list();
+void free_node_list(NodeList* node_list);
+void add_node(NodeList* node_list, Node node);
+Node* get_node(NodeList* node_list, int index);
+
+ObjectList* create_object_list();
+void free_object_list(ObjectList* object_list);
+void* add_object(ObjectList* object_list, void* object, int size);
+void* get_object(ObjectList* object_list, int index);
+
+FileList* create_file_list();
+void free_file_list(FileList* file_list);
+void add_file(FileList* file_list, char* file);
+char* get_file(FileList* file_list, int index); 
+char contains_file(FileList* file_list, char* file);
+
+/////////////////////////////////////////////////////////////////////
+// VALIDATOR
+/////////////////////////////////////////////////////////////////////
 
 typedef struct Validator_Object_t {
     ObjectList* functions;
@@ -183,25 +216,27 @@ typedef struct Validator_Object_t {
     int last_id;
 } Validator_Object;
 
-ObjectList* create_object_list();
-void free_object_list(ObjectList* object_list);
-void* add_object(ObjectList* object_list, void* object, int size);
-void* get_object(ObjectList* object_list, int index);
+Validator_Object create_validator_object();
+void free_validator_object(Validator_Object* validator_object);
 
-const char* read_file(const char* filename);
+/////////////////////////////////////////////////////////////////////
+// FUNCTIONS AND THEIR DEBUGGER FUNCTIONS
+/////////////////////////////////////////////////////////////////////
+
+const char* read_file(char* filename);
+void preprocess(char* filename, FileList* source_code_file_names, FileList* source_code_files, char* file_build_options);
 
 void debug_lexer(TokenList* token_list);
 void debug_lexer_reshape(TokenList* token_list);
 const char* get_token_type_name(enum TokenType type);
-void lexer(const char* source_code, TokenList* token_list);
+void lexer(const char* source_code, char* file_name, TokenList* token_list);
+void lexer_linker(FileList* source_code_file_names, FileList* source_code_files, TokenList* token_list);
 
 void parser(TokenList* tokens, ObjectList* object_list, NodeList* ast, int* index);
 const char* get_node_type_name(enum NodeType type);
 void debug_parser(NodeList* ast);
 void debug_parser_node(Node* node);
 
-Validator_Object create_validator_object();
-void free_validator_object(Validator_Object* validator_object);
 void validator(NodeList* ast, Validator_Object* validator_object);
 void debug_validator(Validator_Object* validator_object);
 

@@ -7,8 +7,8 @@ LDFLAGS =
 OUT_DIR = bin
 TARGET = $(OUT_DIR)/galo
 
-SOURCES = src\compiler.c src\interpreter.c src\lexer.c src\lists.c src\main.c src\parser.c src\transpiler.c src\validator.c
-OBJECTS = bin\compiler.o bin\interpreter.o bin\lexer.o bin\lists.o bin\main.o bin\parser.o bin\transpiler.o bin\validator.o
+SOURCES = src\compiler.c src\interpreter.c src\lexer.c src\lists.c src\main.c src\parser.c src\preprocessor.c src\transpiler.c src\validator.c
+OBJECTS = bin\compiler.o bin\interpreter.o bin\lexer.o bin\lists.o bin\main.o bin\parser.o bin\preprocessor.o bin\transpiler.o bin\validator.o
 
 all: $(OUT_DIR) $(TARGET)
 
@@ -45,6 +45,10 @@ bin\main.o: src\main.c
 bin\parser.o: src\parser.c
 	@mkdir -p bin
 	gcc -Wall -Wextra -O2  -DLanguageType=2 -DCompiler=0 -DTranspiler=1 -DInterpreter=2 -c src\parser.c -o bin\parser.o
+
+bin\preprocessor.o: src\preprocessor.c
+	@mkdir -p bin
+	gcc -Wall -Wextra -O2  -DLanguageType=2 -DCompiler=0 -DTranspiler=1 -DInterpreter=2 -c src\preprocessor.c -o bin\preprocessor.o
 
 bin\transpiler.o: src\transpiler.c
 	@mkdir -p bin

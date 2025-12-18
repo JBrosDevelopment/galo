@@ -51,11 +51,20 @@ int get_id_from_name(Token* name, Validator_Object* validator_object) {
             return BYTE_TYPE;
         }
     }
+    int found_non_initialized_ids = 0;
     for (int i = 0; i < validator_object->variables->size; i++) {
         VariableDeclaration* var_decl = (VariableDeclaration*)validator_object->variables->objects[i];
         if (strcmp(name->value, var_decl->name->value) == 0) {
-            return var_decl->id;
+            if (contains_int(validator_object->active_variables, var_decl->id)) {
+                return var_decl->id;
+            } else {
+                found_non_initialized_ids++;
+            }
         }
+    }
+    if (found_non_initialized_ids > 1) {
+        fprintf(stderr, "variable is not initialized: `%s` in line %d\n", name->value, name->line);
+        exit(1);
     }
     for (int i = 0; i < validator_object->functions->size; i++) {
         FunctionDeclaration* func_decl = (FunctionDeclaration*)validator_object->functions->objects[i];

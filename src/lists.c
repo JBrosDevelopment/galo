@@ -1,5 +1,5 @@
-#ifndef TokenList_H
-#define TokenList_H
+#ifndef List_H
+#define List_H
 
 #include "galo_headers.h"
 #include <stdlib.h>
@@ -146,4 +146,39 @@ void* get_object(ObjectList* list, int index) {
     return list->objects[index];
 }
 
-#endif // TokenList_H
+FileList* create_file_list() {
+    FileList* file_list = (FileList*)malloc(sizeof(FileList));
+    file_list->size = 0;
+    file_list->capacity = 16;
+    file_list->files = (char**)malloc(sizeof(char*) * file_list->capacity);
+    return file_list;
+}
+void free_file_list(FileList* file_list) {
+    for (int i = 0; i < file_list->size; i++) {
+        free((void*)file_list->files[i]);
+    }
+    free(file_list);
+}
+void add_file(FileList* file_list, char* file) {
+    if (file_list->size >= file_list->capacity) {
+        file_list->capacity *= 2;
+        file_list->files = (char**)realloc(file_list->files, sizeof(char*) * file_list->capacity);
+    }
+    file_list->files[file_list->size++] = file;
+}
+char* get_file(FileList* file_list, int index) {
+    if (index < 0 || index >= file_list->size) {
+        return NULL;
+    }
+    return file_list->files[index];
+}
+char contains_file(FileList* file_list, char* file) {
+    for (int i = 0; i < file_list->size; i++) {
+        if (strcmp(file_list->files[i], file) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+#endif // LIST_H

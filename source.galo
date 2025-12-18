@@ -1,59 +1,7 @@
-fun add(left int, right int) int
-    # inside parenthesis because all operations require parenthesis to define order of operations
-    return (left + right) 
-end
+#!galo compile gcc -r -o test-output
+#!include D:\projects\galo\library.galo
 
-let result int = add(5, 10)
-print("5 + 10 = ", result, " math!\n")
 
-# output:
-# 5 + 10 = 15 math!
 
-struct Point
-    x int
-    y int
-end
 
-let p Point
-p x = 10
-p y = 20
-
-let X int = p x
-
-# p.x and p.y are not valid syntax
-# scoping is used by space instead of dot notation
-
-let condition bool = true
-if condition
-    print("This is true!\n")
-elif ((condition == false) or false)
-    print("Oh no it's false!\n")
-else
-    print("This is false!\n")
-end
-
-while condition
-    print("Looping...\n")
-    condition = false
-end
-
-struct Color
-    r byte
-    g byte
-    b byte
-end
-
-fun Color init(red byte, green byte, blue byte) Color
-    let c Color
-    c r = red
-    c g = green
-    c b = blue
-    return c
-end
-
-fun Color set_red(self Color, value byte) void
-    self r = value
-end
-
-let my_color Color = Color init(0, 0, 0)
-Color set_red(my_color, 255)
+let x int = add(2, sub(1, 2))
