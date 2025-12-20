@@ -1,7 +1,7 @@
 #include "galo_headers.h"
 #include <stdio.h>
 
-int main() {
+int main(int argc, char *argv[]) {
     TokenList* token_list = create_token_list(); 
     NodeList* ast = create_node_list();
     ObjectList* object_list = create_object_list();
@@ -27,8 +27,7 @@ int main() {
     validator(ast, &validator_object);
     //debug_validator(&validator_object);
     
-    printf("runnning...\n");
-    run();
+    
 
     free_validator_object(&validator_object);
     free_node_list(ast);

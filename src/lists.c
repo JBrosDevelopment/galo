@@ -1,5 +1,5 @@
-#ifndef List_H
-#define List_H
+#ifndef List_C
+#define List_C
 
 #include "galo_headers.h"
 #include <stdlib.h>
@@ -181,4 +181,4 @@ char contains_file(FileList* file_list, char* file) {
     return 0;
 }
 
-#endif // LIST_H
+#endif // LIST_C

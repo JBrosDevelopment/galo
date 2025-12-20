@@ -1,13 +1,11 @@
-#if LanguageType == Transpiler
-#ifndef Transpiler_H
-#define Transpiler_H
+#ifndef Transpiler_C
+#define Transpiler_C
 
 #include "galo_headers.h"
 #include <stdio.h>
 
-void run() {
+void transpile() {
     printf("Galo Language Transpiler\n");
 }
 
-#endif // Transpiler_H
-#endif // LanguageType == Transpiler
+#endif // Transpiler_C

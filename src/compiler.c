@@ -1,13 +1,11 @@
-#if LanguageType == Compiler
-#ifndef Compiler_H
-#define Compiler_H
+#ifndef Compiler_C
+#define Compiler_C
 
 #include "galo_headers.h"
 #include <stdio.h>
 
-void run() {
+void compile() {
     printf("Galo Language Compiler\n");
 }
 
-#endif // Compiler_H
-#endif // LanguageType == Compiler
+#endif // Compiler_C

@@ -1,5 +1,5 @@
-#ifndef Validator_H
-#define Validator_H
+#ifndef Validator_C
+#define Validator_C
 
 #include "galo_headers.h"
 #include <stdio.h>
@@ -626,4 +626,4 @@ void debug_validator(Validator_Object* validator_object) {
     printf("End of Validator Table\n");
 }
 
-#endif // Validator_H
+#endif // Validator_C

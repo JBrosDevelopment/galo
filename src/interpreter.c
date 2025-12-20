@@ -1,13 +1,11 @@
-#if LanguageType == Interpreter
-#ifndef Interpreter_H
-#define Interpreter_H
+#ifndef Interpreter_C
+#define Interpreter_C
 
 #include "galo_headers.h"
 #include <stdio.h>
 
-void run() {
-    printf("Galo Language Interpreter\n");
+void interpret(NodeList* ast) {
+    
 }
 
-#endif // Interpreter_H
-#endif // LanguageType == Interpreter
+#endif // Interpreter_C

@@ -1,5 +1,5 @@
-#ifndef Lexer_H
-#define Lexer_H
+#ifndef Lexer_C
+#define Lexer_C
 
 #include "galo_headers.h"
 #include <stdio.h>
@@ -369,4 +369,4 @@ void debug_lexer_reshape(TokenList* token_list) {
     printf("\n");
 }
 
-#endif // Lexer_H
+#endif // Lexer_C

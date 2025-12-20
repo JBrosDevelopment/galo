@@ -4,12 +4,23 @@ Simple programming language that includes a interpreter, transpiler, and compile
 
 ## Building the Project
 
-Adjsut the `project.json` to the desired configuration, then run:
+This project uses a Makefile for simplicity
 
 ```sh
-python .\MakefileGenerator.py
 make run
 ```
+
+For debugging using gdb, run
+
+```sh
+make run-debug
+```
+
+- `make`: builds program
+- `make debug`: builds program with `-g` flags for debugging
+- `make clean`: clears `bin/` folder
+- `make run`: builds and runs program
+- `make run-debug`: builds program with `-g` flag and runs it inside `gdb` for debugging
 
 ## Example
 
@@ -101,9 +112,9 @@ let s string = f # raises an error, cannot assign float to string
 ```
 
 ## Requirements
-- Python
 - Make
 - A C compiler (e.g., GCC, Clang, MSVC)
+- GDB (optional, for development debugging with `make debug`)
 
 ## License
 This project is licensed under the MIT License. See the LICENSE file for details.

@@ -1,5 +1,5 @@
-#ifndef Parser_H
-#define Parser_H
+#ifndef Parser_C
+#define Parser_C
 
 #include "galo_headers.h"
 #include <stdio.h>
@@ -824,4 +824,4 @@ void debug_parser(NodeList* ast) {
     printf("Finished debugging AST\n");
 }
 
-#endif // Parser_H
+#endif // Parser_C

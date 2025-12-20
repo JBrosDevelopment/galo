@@ -223,6 +223,8 @@ void free_validator_object(Validator_Object* validator_object);
 // FUNCTIONS AND THEIR DEBUGGER FUNCTIONS
 /////////////////////////////////////////////////////////////////////
 
+void process_args(int argc, char** argv);
+
 const char* read_file(char* filename);
 void preprocess(char* filename, FileList* source_code_file_names, FileList* source_code_files, char* file_build_options);
 
@@ -240,4 +242,7 @@ void debug_parser_node(Node* node);
 void validator(NodeList* ast, Validator_Object* validator_object);
 void debug_validator(Validator_Object* validator_object);
 
-void run();
+void interpret(NodeList* ast);
+void debug();
+void transpile();
+void compile();
