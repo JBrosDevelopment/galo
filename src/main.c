@@ -11,7 +11,11 @@ int main(int argc, char *argv[]) {
     char* file_build_options = NULL;
     
     printf("preprocessing...\n");
-    preprocess("source.galo", source_code_file_names, source_code_files, file_build_options);
+    preprocess("project/main.galo", source_code_file_names, source_code_files, &file_build_options);
+
+    printf("processing arguments...\n");
+    BuildArguments build_arguments = process_args(argc, argv, file_build_options);
+    debug_build_arguments(&build_arguments);
     
     printf("lexing...\n");
     lexer_linker(source_code_file_names, source_code_files, token_list);
@@ -34,6 +38,8 @@ int main(int argc, char *argv[]) {
     free_object_list(object_list);
     free_token_list(token_list);
     free_file_list(source_code_files);
+    //free_file_list(source_code_file_names);
+    free_build_arguments(&build_arguments);
 
     return 0;
 }

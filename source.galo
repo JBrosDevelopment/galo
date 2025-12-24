@@ -1,8 +1,0 @@
-#!galo interpret
-#!include D:\projects\galo\library.galo
-
-
-
-
-let x int = add(2, sub(1, 2))
-print("X is equal to: ", x, "\n")

@@ -15,7 +15,9 @@ TokenList* create_token_list() {
 }
 void free_token_list(TokenList* token_list) {
     free(token_list->tokens);
+    token_list->tokens = NULL;
     free(token_list);
+    token_list = NULL;
 }
 void add_token(TokenList* token_list, Token token) {
     if (token_list->size >= token_list->capacity) {
@@ -39,8 +41,11 @@ NodeList* create_node_list() {
     return node_list;
 }
 void free_node_list(NodeList* node_list) {
+    if (node_list == NULL || node_list->nodes == NULL) return;
     free(node_list->nodes);
+    node_list->nodes = NULL;
     free(node_list);
+    node_list = NULL;
 }
 void add_node(NodeList* node_list, Node node) {
     if (node_list->size >= node_list->capacity) {
@@ -66,7 +71,9 @@ IntList* create_int_list() {
 }
 void free_int_list(IntList* int_list) {
     free(int_list->int_list);
+    int_list->int_list = NULL;
     free(int_list);
+    int_list = NULL;
 }
 void add_int(IntList* int_list, int value) {
     if (int_list->size >= int_list->capacity) {
@@ -103,7 +110,7 @@ void remove_int_value(IntList* int_list, int value) {
     exit(1);
 }
 
-char contains_int(IntList* int_list, int value) {
+bool contains_int(IntList* int_list, int value) {
     for (int i = 0; i < int_list->size; i++) {
         if (int_list->int_list[i] == value) {
             return 1;
@@ -122,10 +129,15 @@ ObjectList* create_object_list() {
 }
 
 void free_object_list(ObjectList* list) {
-    for (int i = 0; i < list->size; i++)
+    for (int i = 0; i < list->size; i++) {
         free(list->objects[i]);
+        list->objects[i] = NULL;
+    }
     free(list->objects);
+    list->objects = NULL;
+    
     free(list);
+    list = NULL;
 }
 
 void* add_object(ObjectList* list, void* data, int size) {
@@ -156,8 +168,11 @@ FileList* create_file_list() {
 void free_file_list(FileList* file_list) {
     for (int i = 0; i < file_list->size; i++) {
         free((void*)file_list->files[i]);
+        file_list->files[i] = NULL;
     }
+    file_list->files = NULL;
     free(file_list);
+    file_list = NULL;
 }
 void add_file(FileList* file_list, char* file) {
     if (file_list->size >= file_list->capacity) {
@@ -172,7 +187,7 @@ char* get_file(FileList* file_list, int index) {
     }
     return file_list->files[index];
 }
-char contains_file(FileList* file_list, char* file) {
+bool contains_file(FileList* file_list, char* file) {
     for (int i = 0; i < file_list->size; i++) {
         if (strcmp(file_list->files[i], file) == 0) {
             return 1;

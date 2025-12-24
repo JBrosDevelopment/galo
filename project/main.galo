@@ -1,0 +1,18 @@
+#!galo interpret -- 1 5 9 3 -5 4 -99 123
+#!include project/lib.galo
+
+fun main(args list) int
+    let x int = 0
+    let i int = 0
+    while (list length(args) > i)
+        let arg string = list get(args, i)
+        let val int = int convert(arg)
+        if (val == -6)
+            print("INVALID ARGUMENT:", arg, "\n")
+            return 1
+        end
+        x = add(x, val)
+        i = increment(i)
+    end
+    print("args total up to: ", x, "\n")
+end

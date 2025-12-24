@@ -1,0 +1,22 @@
+#!include lib.galo
+
+fun build(directory string, args list) int
+    let input string = string concat(directory, "/src/main.galo")
+    let output string = string concat(directory, "/build/main.py")
+
+    let build_arguments __BuildArguments
+    build_arguments input_file = input
+    build_arguments output_file = output
+    build_arguments target_lang = "python"
+    let success bool = transpile(build_arguments)
+
+    if (not success)
+        return 1;
+    end
+
+    let program_args list = list init(string)
+    list add(program_args, output)
+    run("python", process_args)
+
+    return 0
+end

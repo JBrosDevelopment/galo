@@ -32,7 +32,7 @@ void parser(TokenList* tokens, ObjectList* object_list, NodeList* ast, int* inde
     }
 }
 
-char if_list_contains_token(TokenList* tokens, int start, int end, enum TokenType type) {
+bool if_list_contains_token(TokenList* tokens, int start, int end, enum TokenType type) {
     for (int i = start; i < end; i++) {
         Token* token = get_token(tokens, i);
         if (token->type == type) {
@@ -58,7 +58,7 @@ void parse_var_decl(TokenList* tokens, ObjectList* object_list, int* index, Vari
 
     (*index)++;
     Token* var_type = get_token(tokens, *index);
-    if (var_type->type != TOKEN_NATIVE_TYPE && var_type->type != TOKEN_IDENTIFIER) {
+    if (var_type->type != TOKEN_IDENTIFIER) {
         printf("Error: Invalid variable type in line %d\n", var_type->line);
         exit(1);
     }
@@ -137,7 +137,7 @@ Parameter* parse_parameter_list(TokenList* tokens, ObjectList* object_list, int*
             expected = 2;
         } else if (expected == 2) {
             param_type = get_token(tokens, *index);
-            if (param_type->type != TOKEN_NATIVE_TYPE && param_type->type != TOKEN_IDENTIFIER) {
+            if (param_type->type != TOKEN_IDENTIFIER) {
                 printf("Error: Invalid parameter type in line %d\n", param_type->line);
                 exit(1);
             }
@@ -224,7 +224,7 @@ void parse_function(TokenList* tokens, ObjectList* object_list, int* index, Func
     (*index)++;
 
     Token* return_type = get_token(tokens, *index);
-    if (get_token(tokens, *index)->type != TOKEN_IDENTIFIER && return_type->type != TOKEN_NATIVE_TYPE) {
+    if (get_token(tokens, *index)->type != TOKEN_IDENTIFIER) {
         printf("Error: Invalid function return type `%s` in line %d\n", return_type->value, func_name->line);
         exit(1);
     }
@@ -457,7 +457,7 @@ void parse_while(TokenList* tokens, ObjectList* object_list, int* index, WhileLo
     while_loop->body = body;
 }
 
-char line_contains_token(TokenList* tokens, int start, enum TokenType type) {
+bool line_contains_token(TokenList* tokens, int start, enum TokenType type) {
     int index = start;
     while (get_token(tokens, index)->type != TOKEN_END_OF_LINE) {
         if (get_token(tokens, index)->type == type) {

@@ -292,17 +292,17 @@ void lexer_add_word_or_number_token(const char* source_code, char* file_name, in
     } else if (strcmp(token_value, "false") == 0) {
         token->type = TOKEN_CONSTANT_BOOLEAN;
     } else if (strcmp(token_value, "int") == 0) {
-        token->type = TOKEN_NATIVE_TYPE;
+        token->type = TOKEN_IDENTIFIER;
     } else if (strcmp(token_value, "float") == 0) {
-        token->type = TOKEN_NATIVE_TYPE;
+        token->type = TOKEN_IDENTIFIER;
     } else if (strcmp(token_value, "string") == 0) {
-        token->type = TOKEN_NATIVE_TYPE;
+        token->type = TOKEN_IDENTIFIER;
     } else if (strcmp(token_value, "bool") == 0) {
-        token->type = TOKEN_NATIVE_TYPE;
+        token->type = TOKEN_IDENTIFIER;
     } else if (strcmp(token_value, "byte") == 0) {
-        token->type = TOKEN_NATIVE_TYPE;
+        token->type = TOKEN_IDENTIFIER;
     } else if (strcmp(token_value, "void") == 0) {
-        token->type = TOKEN_NATIVE_TYPE;
+        token->type = TOKEN_IDENTIFIER;
     } else if (strcmp(token_value, "and") == 0) {
         token->type = TOKEN_OPERATOR_LOGICAL;
     } else if (strcmp(token_value, "or") == 0) {
@@ -322,7 +322,6 @@ const char* get_token_type_name(enum TokenType type) {
         case TOKEN_CONSTANT_FLOAT: return "TOKEN_CONSTANT_FLOAT"; 
         case TOKEN_CONSTANT_STRING: return "TOKEN_CONSTANT_STRING"; 
         case TOKEN_CONSTANT_BOOLEAN: return "TOKEN_CONSTANT_BOOLEAN"; 
-        case TOKEN_NATIVE_TYPE: return "TOKEN_NATIVE_TYPE"; 
         case TOKEN_KEYWORD_LET: return "TOKEN_KEYWORD_LET"; 
         case TOKEN_KEYWORD_FUN: return "TOKEN_KEYWORD_FUN"; 
         case TOKEN_KEYWORD_STRUCT: return "TOKEN_KEYWORD_STRUCT";

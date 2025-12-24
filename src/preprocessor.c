@@ -7,14 +7,14 @@ static char* skip_spaces(char* s); // Forward declaration
 static char* read_word(char* s, char* out, int max); // Forward declaration
 void trim_trailing_whitespace(char* s); // Forward declaration
 
-void preprocess(char* file_name, FileList* source_code_file_names, FileList* source_code_files, char* file_build_options) {
+void preprocess(char* file_name, FileList* source_code_file_names, FileList* source_code_files, char** file_build_options) {
     const char* source_code = read_file(file_name);
     if (!source_code) {
         exit(1);
     }
 
     ObjectList* shebang_pointers = create_object_list();
-    char done = 0;
+    bool done = false;
 
     for (int i = 0; source_code[i] != '\0'; ) {
         int start = -1;
@@ -32,7 +32,7 @@ void preprocess(char* file_name, FileList* source_code_file_names, FileList* sou
         }
 
         if (start == -1) {
-            done = 1;
+            done = true;
             i++;
             continue;
         }
@@ -92,8 +92,10 @@ void preprocess(char* file_name, FileList* source_code_file_names, FileList* sou
             if (contains_file(source_code_file_names, filename)) {
                 continue;
             }
-            preprocess(filename, source_code_file_names, source_code_files, child_file_build_options);
+            preprocess(filename, source_code_file_names, source_code_files, &child_file_build_options);
             if (child_file_build_options) {
+                trim_trailing_whitespace(filename);
+                trim_trailing_whitespace(child_file_build_options);
                 printf("WARNING: Child file `%s` has build options `%s` which are ignored\n", filename, child_file_build_options);
             }
         } else if (strcmp(directive, "galo") == 0) {
@@ -103,7 +105,7 @@ void preprocess(char* file_name, FileList* source_code_file_names, FileList* sou
             }
     
             char* args = strdup(rest);
-            file_build_options = args;
+            *file_build_options = args;
         } else {
             fprintf(stderr, "ERROR: Unknown shebang directive `%s` in file: `%s`\n", directive, file_name);
             exit(1);

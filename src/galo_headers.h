@@ -1,3 +1,54 @@
+#include <stdbool.h>
+
+/////////////////////////////////////////////////////////////////////
+// ARGUMENT PROCESSOR
+/////////////////////////////////////////////////////////////////////
+
+enum BuildOptions {
+    OPTION_COMPILE, // requires input file: `galo compile file.galo`
+    OPTION_TRANSPILE, // requires input file: `galo transpile file.galo`
+    OPTION_INTERPRET, // requires input file: `galo interpret file.galo`
+    OPTION_BUILD, // requires `build.galo`: `galo build`
+    OPTION_RUN, // requires `main.galo` (with build options) or optional `build.galo`: `galo run`
+    OPTION_NEW, // requires name: `galo new [NAME]`
+};
+
+typedef struct BuildArguments_t {
+    enum BuildOptions build_option;
+
+    // Universal Arguments
+    char** input_files; // [FILE] or -i [PATH]
+    char* output_file; // -o [PATH]
+    char** input_dirs; // -I [PATH]
+    char** passthrough_flags; // -- [EVERYTHING AFTER `--`]
+    int input_file_count;
+    int input_dirs_count;
+    int passthrough_flag_count;
+
+    // Universal Flags
+    bool emit_tokens; // --emit-tokens
+    bool emit_ast; // --emit-ast
+    bool emit_validator; // --emit-validator
+    bool version; // --version
+    bool help; // --help
+
+    // Compiler Flags/Arguments
+    char* compiler; // -compiler [PATH OR NAME OF COMPILER]
+    bool emit_c; // --emit-c
+    bool emit_obj; // --emit-obj
+    bool debug_symbols; // --debug-symbols
+
+    // Transpiler Flags/Arguments
+    char* target_lang; // -to [LANGUAGE NAME]
+    bool emit_headers; // --emit-header
+    bool single_file; // --single-file
+
+    // Interpreter Flags/Arguments
+    int max_steps; // -max-steps [NUMBER]
+    bool interpret_debug; // --interpret-debug
+} BuildArguments;
+
+
 /////////////////////////////////////////////////////////////////////
 // LEXER
 /////////////////////////////////////////////////////////////////////
@@ -9,7 +60,6 @@ enum TokenType {
     TOKEN_CONSTANT_FLOAT,
     TOKEN_CONSTANT_STRING,
     TOKEN_CONSTANT_BOOLEAN,
-    TOKEN_NATIVE_TYPE,
     TOKEN_KEYWORD_LET,
     TOKEN_KEYWORD_FUN,
     TOKEN_KEYWORD_STRUCT,
@@ -137,7 +187,7 @@ typedef struct IfStatement_t {
     NodeList* body;
     ElifIfStatement* elifs;
     int elif_count;
-    char has_else;
+    bool has_else;
     NodeList* else_body;
     int line;
 } IfStatement;
@@ -150,7 +200,7 @@ typedef struct Operation_t {
     Token* operator;
     Node* left;
     Node* right;
-    char is_not_operator;
+    bool is_not_operator;
 } Operation;
 
 /////////////////////////////////////////////////////////////////////
@@ -186,7 +236,7 @@ void add_int(IntList* int_list, int value);
 int* get_int(IntList* int_list, int index);
 void remove_int_index(IntList* int_list, int index);
 void remove_int_value(IntList* int_list, int value);
-char contains_int(IntList* int_list, int value);
+bool contains_int(IntList* int_list, int value);
 
 NodeList* create_node_list();
 void free_node_list(NodeList* node_list);
@@ -202,13 +252,24 @@ FileList* create_file_list();
 void free_file_list(FileList* file_list);
 void add_file(FileList* file_list, char* file);
 char* get_file(FileList* file_list, int index); 
-char contains_file(FileList* file_list, char* file);
+bool contains_file(FileList* file_list, char* file);
 
 /////////////////////////////////////////////////////////////////////
 // VALIDATOR
 /////////////////////////////////////////////////////////////////////
 
+typedef struct PredefinedFunction_t {
+    char* name;
+    int id;
+    int* parameter_ids;
+    int parameter_count;
+    bool infinite_parameters;
+    int return_id;
+    int parent_id;
+} PredefinedFunction;
+
 typedef struct Validator_Object_t {
+    ObjectList* predefined_functions;
     ObjectList* functions;
     ObjectList* structs;
     ObjectList* variables;
@@ -218,15 +279,18 @@ typedef struct Validator_Object_t {
 
 Validator_Object create_validator_object();
 void free_validator_object(Validator_Object* validator_object);
+void add_predefined_functions(Validator_Object* validator_object);
 
 /////////////////////////////////////////////////////////////////////
 // FUNCTIONS AND THEIR DEBUGGER FUNCTIONS
 /////////////////////////////////////////////////////////////////////
 
-void process_args(int argc, char** argv);
+BuildArguments process_args(int argc, char** argv, char* file_build_options);
+void debug_build_arguments(BuildArguments* build_arguments);
+void free_build_arguments(BuildArguments* build_arguments);
 
 const char* read_file(char* filename);
-void preprocess(char* filename, FileList* source_code_file_names, FileList* source_code_files, char* file_build_options);
+void preprocess(char* filename, FileList* source_code_file_names, FileList* source_code_files, char** file_build_options);
 
 void debug_lexer(TokenList* token_list);
 void debug_lexer_reshape(TokenList* token_list);

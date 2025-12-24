@@ -1,0 +1,66 @@
+fun add(l int, r int) int
+    return (l + r)
+end
+
+fun increment(v int) int
+    return (v + 1)
+end
+
+#int convert(string val) int
+#float convert(string val) float
+#bool convert(string val) bool
+#byte convert(string val) byte
+#
+#fun string length(self string) int
+#fun string index(self string, int index) byte
+#fun string contains(value string, sub string) bool
+#fun string starts_with(value string, check string) bool
+#fun string ends_with(value string, check string) bool
+#fun string replace(value string, bef string, aft string) string
+#fun string sub(value string, start int, end int) string
+#fun string concat(left string, right string) string
+#
+#struct list
+#    type Type
+#end
+#
+#fun init(type Type) list
+#fun add(self list, value list type) void
+#fun get(self list, index int) list type
+#fun length(self list) int
+#fun remove(self list, index int) void
+#fun clear(self list) void
+#fun contains(self list, value list type) bool
+#fun set(self list, index int, value list type) void
+
+# for build.galo
+#struct __BuildArguments
+#    input_file string
+#    output_file string
+#    input_files list
+#    input_dirs list
+#    passthrough_flags list
+#   
+#    emit_tokens bool
+#    emit_ast bool
+#    emit_validator bool
+#    version bool
+#    help bool
+#   
+#    compiler string
+#    emit_c bool
+#    emit_obj bool
+#    debug_symbols bool
+#   
+#    target_lang string
+#    emit_headers bool
+#    single_file bool
+#   
+#    max_steps int
+#    interpret_debug bool
+#end
+#
+#fun compile(args __BuildArguments)
+#fun transpile(args __BuildArguments)
+#fun interpret(args __BuildArguments)
+#fun run(program string, args list)
