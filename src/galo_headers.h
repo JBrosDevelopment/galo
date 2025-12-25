@@ -1,8 +1,16 @@
 #include <stdbool.h>
 
+#define GALO_VERSION "0.0.1"
+
 /////////////////////////////////////////////////////////////////////
 // ARGUMENT PROCESSOR
 /////////////////////////////////////////////////////////////////////
+
+typedef struct StringList_t {
+    char** strings;
+    int size;
+    int capacity;
+} StringList;
 
 enum BuildOptions {
     OPTION_COMPILE, // requires input file: `galo compile file.galo`
@@ -11,41 +19,41 @@ enum BuildOptions {
     OPTION_BUILD, // requires `build.galo`: `galo build`
     OPTION_RUN, // requires `main.galo` (with build options) or optional `build.galo`: `galo run`
     OPTION_NEW, // requires name: `galo new [NAME]`
+    OPTION_VERSION, // `galo version`
+    OPTION_HELP // `galo help`
 };
 
 typedef struct BuildArguments_t {
     enum BuildOptions build_option;
 
     // Universal Arguments
-    char** input_files; // [FILE] or -i [PATH]
+    StringList* input_files; // [FILE] or -i [PATH]
     char* output_file; // -o [PATH]
-    char** input_dirs; // -I [PATH]
-    char** passthrough_flags; // -- [EVERYTHING AFTER `--`]
-    int input_file_count;
-    int input_dirs_count;
-    int passthrough_flag_count;
+    StringList* input_dirs; // -I [PATH]
+    StringList* passthrough_flags; // -- [EVERYTHING AFTER `--`]
 
     // Universal Flags
     bool emit_tokens; // --emit-tokens
     bool emit_ast; // --emit-ast
     bool emit_validator; // --emit-validator
-    bool version; // --version
-    bool help; // --help
 
     // Compiler Flags/Arguments
-    char* compiler; // -compiler [PATH OR NAME OF COMPILER]
+    char* compiler; // --compiler [PATH OR NAME OF COMPILER]
     bool emit_c; // --emit-c
     bool emit_obj; // --emit-obj
     bool debug_symbols; // --debug-symbols
 
     // Transpiler Flags/Arguments
-    char* target_lang; // -to [LANGUAGE NAME]
+    char* target_lang; // -t [LANGUAGE NAME]
     bool emit_headers; // --emit-header
     bool single_file; // --single-file
 
     // Interpreter Flags/Arguments
-    int max_steps; // -max-steps [NUMBER]
+    int max_steps; // --max-steps [NUMBER]
     bool interpret_debug; // --interpret-debug
+
+    // New Project Arguments
+    char* project_name; // [PROJECT_NAME]
 } BuildArguments;
 
 
@@ -219,12 +227,6 @@ typedef struct ObjectList_t {
     int capacity;
 } ObjectList;
 
-typedef struct FileList_t {
-    char** files;
-    int size;
-    int capacity;
-} FileList;
-
 TokenList* create_token_list();
 void free_token_list(TokenList* token_list);
 void add_token(TokenList* token_list, Token token);
@@ -248,11 +250,11 @@ void free_object_list(ObjectList* object_list);
 void* add_object(ObjectList* object_list, void* object, int size);
 void* get_object(ObjectList* object_list, int index);
 
-FileList* create_file_list();
-void free_file_list(FileList* file_list);
-void add_file(FileList* file_list, char* file);
-char* get_file(FileList* file_list, int index); 
-bool contains_file(FileList* file_list, char* file);
+StringList* create_string_list();
+void free_string_list(StringList* string_list);
+void add_string(StringList* string_list, char* string);
+char* get_string(StringList* string_list, int index); 
+bool contains_string(StringList* string_list, char* string);
 
 /////////////////////////////////////////////////////////////////////
 // VALIDATOR
@@ -285,18 +287,18 @@ void add_predefined_functions(Validator_Object* validator_object);
 // FUNCTIONS AND THEIR DEBUGGER FUNCTIONS
 /////////////////////////////////////////////////////////////////////
 
-BuildArguments process_args(int argc, char** argv, char* file_build_options);
+BuildArguments process_args(int argc, char** argv);
 void debug_build_arguments(BuildArguments* build_arguments);
 void free_build_arguments(BuildArguments* build_arguments);
 
 const char* read_file(char* filename);
-void preprocess(char* filename, FileList* source_code_file_names, FileList* source_code_files, char** file_build_options);
+void preprocess(char* filename, StringList* source_code_file_names, StringList* source_code_files);
 
 void debug_lexer(TokenList* token_list);
 void debug_lexer_reshape(TokenList* token_list);
 const char* get_token_type_name(enum TokenType type);
 void lexer(const char* source_code, char* file_name, TokenList* token_list);
-void lexer_linker(FileList* source_code_file_names, FileList* source_code_files, TokenList* token_list);
+void lexer_linker(StringList* source_code_file_names, StringList* source_code_files, TokenList* token_list);
 
 void parser(TokenList* tokens, ObjectList* object_list, NodeList* ast, int* index);
 const char* get_node_type_name(enum NodeType type);
@@ -306,7 +308,10 @@ void debug_parser_node(Node* node);
 void validator(NodeList* ast, Validator_Object* validator_object);
 void debug_validator(Validator_Object* validator_object);
 
+void build_option_new(char* project_name);
+void build_option_version();
+void build_option_help();
+
 void interpret(NodeList* ast);
-void debug();
 void transpile();
 void compile();

@@ -15,10 +15,10 @@
 
 void lexer_add_word_or_number_token(const char* source_code, char* file_name, int i, int* start_of_token, char* lexing_code, int line, Token* token); // Forward declaration
 
-void lexer_linker(FileList* source_code_file_names, FileList* source_code_files, TokenList* token_list) {
+void lexer_linker(StringList* source_code_file_names, StringList* source_code_files, TokenList* token_list) {
     for (int i = 0; i < source_code_files->size; i++) {
-        char* source_code = get_file(source_code_files, i);
-        char* file_name = get_file(source_code_file_names, i);
+        char* source_code = get_string(source_code_files, i);
+        char* file_name = get_string(source_code_file_names, i);
         lexer(source_code, file_name, token_list);
 
         // Insert END_OF_LINE token between files

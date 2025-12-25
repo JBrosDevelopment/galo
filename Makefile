@@ -57,7 +57,7 @@ clean:
 	rm -rf $(OUT_DIR)
 
 run: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) $(filter-out $@,$(MAKECMDGOALS))
 
 run-debug: $(DEBUG_TARGET)
 	gdb ./$(DEBUG_TARGET)

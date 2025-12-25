@@ -7,7 +7,7 @@ static char* skip_spaces(char* s); // Forward declaration
 static char* read_word(char* s, char* out, int max); // Forward declaration
 void trim_trailing_whitespace(char* s); // Forward declaration
 
-void preprocess(char* file_name, FileList* source_code_file_names, FileList* source_code_files, char** file_build_options) {
+void preprocess(char* file_name, StringList* source_code_file_names, StringList* source_code_files) {
     const char* source_code = read_file(file_name);
     if (!source_code) {
         exit(1);
@@ -88,24 +88,25 @@ void preprocess(char* file_name, FileList* source_code_file_names, FileList* sou
             if (filename == NULL) {
                 printf("ERROR: Internal error in preprocessing, failed to get child file from parent file: `%s`\n", file_name);
             }
-            char* child_file_build_options = NULL;
-            if (contains_file(source_code_file_names, filename)) {
+            //char* child_file_build_options = NULL;
+            if (contains_string(source_code_file_names, filename)) {
                 continue;
             }
-            preprocess(filename, source_code_file_names, source_code_files, &child_file_build_options);
-            if (child_file_build_options) {
-                trim_trailing_whitespace(filename);
-                trim_trailing_whitespace(child_file_build_options);
-                printf("WARNING: Child file `%s` has build options `%s` which are ignored\n", filename, child_file_build_options);
-            }
+            preprocess(filename, source_code_file_names, source_code_files);
+            //if (child_file_build_options) {
+            //    trim_trailing_whitespace(filename);
+            //    trim_trailing_whitespace(child_file_build_options);
+            //    printf("WARNING: Child file `%s` has build options `%s` which are ignored\n", filename, child_file_build_options);
+            //}
         } else if (strcmp(directive, "galo") == 0) {
             if (*rest == '\0') {
                 fprintf(stderr, "ERROR: galo requires arguments in file: `%s`\n", file_name);
                 exit(1);
             }
     
-            char* args = strdup(rest);
-            *file_build_options = args;
+            // this is handled in process_args.c
+            //char* args = strdup(rest);
+            //*file_build_options = args;
         } else {
             fprintf(stderr, "ERROR: Unknown shebang directive `%s` in file: `%s`\n", directive, file_name);
             exit(1);
@@ -117,8 +118,8 @@ void preprocess(char* file_name, FileList* source_code_file_names, FileList* sou
     }
     free_object_list(shebang_pointers);
 
-    add_file(source_code_file_names, file_name);
-    add_file(source_code_files, source_code);
+    add_string(source_code_file_names, file_name);
+    add_string(source_code_files, source_code);
 }
 
 static char* skip_spaces(char* s) {

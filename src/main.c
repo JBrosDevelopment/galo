@@ -2,20 +2,33 @@
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
+    StringList* source_code_files = create_string_list();
+    StringList* source_code_file_names = create_string_list();
+
+    //printf("processing arguments...\n");
+    BuildArguments build_arguments = process_args(argc, argv);
+    debug_build_arguments(&build_arguments);
+    
+    if (build_arguments.build_option == OPTION_NEW) {
+        build_option_new(build_arguments.project_name);
+        return 0;
+    }
+    if (build_arguments.build_option == OPTION_VERSION) {
+        build_option_version();
+        return 0;
+    }
+    if (build_arguments.build_option == OPTION_HELP) {
+        build_option_help();
+        return 0;
+    }
+    
+    printf("preprocessing...\n");
+    preprocess("project/main.galo", source_code_file_names, source_code_files);
+
     TokenList* token_list = create_token_list(); 
     NodeList* ast = create_node_list();
     ObjectList* object_list = create_object_list();
     Validator_Object validator_object = create_validator_object();
-    FileList* source_code_files = create_file_list();
-    FileList* source_code_file_names = create_file_list();
-    char* file_build_options = NULL;
-    
-    printf("preprocessing...\n");
-    preprocess("project/main.galo", source_code_file_names, source_code_files, &file_build_options);
-
-    printf("processing arguments...\n");
-    BuildArguments build_arguments = process_args(argc, argv, file_build_options);
-    debug_build_arguments(&build_arguments);
     
     printf("lexing...\n");
     lexer_linker(source_code_file_names, source_code_files, token_list);
@@ -37,8 +50,8 @@ int main(int argc, char *argv[]) {
     free_node_list(ast);
     free_object_list(object_list);
     free_token_list(token_list);
-    free_file_list(source_code_files);
-    //free_file_list(source_code_file_names);
+    free_string_list(source_code_files);
+    free_string_list(source_code_file_names);
     free_build_arguments(&build_arguments);
 
     return 0;
