@@ -1,6 +1,3 @@
-#define PROCESS_ARGS_C
-#define PROCESS_ARGS_C
-
 #include "galo_headers.h"
 #include <stdio.h>
 #include <string.h>
@@ -547,7 +544,7 @@ void check_run_option_compatibility(BuildArguments* build_arguments) {
         printf("Error: No build options found in main.galo for `run` option. Use `galo help` for more information.\n");
         exit(1);
     }
-    
+
     char* command = get_string(build_arguments->file_build_options, 0);
     if (strcmp(command, "interpret") != 0 && strcmp(command, "transpile") != 0 && strcmp(command, "compile") != 0) {
         printf("Error: Invalid build option `%s` found in main.galo for `run`o ption. Only `interpret`, `transpile`, or `compile` are allowed. Use `galo help` for more information.\n", command);
@@ -668,5 +665,3 @@ void debug_build_arguments(BuildArguments* build_arguments) {
     print_option_bool(" Interpret Debug", build_arguments->interpret_debug);
     printf("END OF BUILD ARGUMENTS\n");
 }
-
-#undef PROCESS_ARGS_C

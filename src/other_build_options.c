@@ -1,6 +1,3 @@
-#ifndef OTHER_BUILD_OPTIONS_C
-#define OTHER_BUILD_OPTIONS_C
-
 #include "galo_headers.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,5 +93,3 @@ EXAMPLES:\n\
 
     printf("%s\n", help_message);
 }
-
-#endif // OTHER_BUILD_OPTIONS_C

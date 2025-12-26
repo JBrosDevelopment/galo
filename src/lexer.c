@@ -1,6 +1,3 @@
-#ifndef Lexer_C
-#define Lexer_C
-
 #include "galo_headers.h"
 #include <stdio.h>
 #include <string.h>
@@ -383,5 +380,3 @@ void emit_tokens(TokenList* token_list, char* output_file) {
 
     fclose(file);
 }
-
-#endif // Lexer_C

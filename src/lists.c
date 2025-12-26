@@ -1,6 +1,3 @@
-#ifndef List_C
-#define List_C
-
 #include "galo_headers.h"
 #include <stdlib.h>
 #include <string.h>
@@ -199,5 +196,3 @@ bool contains_string(StringList* string_list, char* string) {
     }
     return 0;
 }
-
-#endif // LIST_C

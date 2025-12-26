@@ -1,6 +1,3 @@
-#ifndef Validator_C
-#define Validator_C
-
 #include "galo_headers.h"
 #include <stdio.h>
 #include <string.h>
@@ -992,5 +989,3 @@ void emit_validator(Validator_Object* validator_object, char* output_file) {
 
     fclose(file);
 }
-
-#endif // Validator_C

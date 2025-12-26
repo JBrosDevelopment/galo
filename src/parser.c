@@ -1,6 +1,3 @@
-#ifndef Parser_C
-#define Parser_C
-
 #include "galo_headers.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -835,5 +832,3 @@ void emit_ast(NodeList* ast, char* output_file) {
 
     fclose(file);
 }
-
-#endif // Parser_C
