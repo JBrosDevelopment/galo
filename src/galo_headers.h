@@ -17,7 +17,7 @@ enum BuildOptions {
     OPTION_TRANSPILE, // requires input file: `galo transpile file.galo`
     OPTION_INTERPRET, // requires input file: `galo interpret file.galo`
     OPTION_BUILD, // requires `build.galo`: `galo build`
-    OPTION_RUN, // requires `main.galo` (with build options) or optional `build.galo`: `galo run`
+    OPTION_RUN, // requires `main.galo` (with build options): `galo run`
     OPTION_NEW, // requires name: `galo new [NAME]`
     OPTION_VERSION, // `galo version`
     OPTION_HELP // `galo help`
@@ -52,8 +52,11 @@ typedef struct BuildArguments_t {
     int max_steps; // --max-steps [NUMBER]
     bool interpret_debug; // --interpret-debug
 
-    // New Project Arguments
-    char* project_name; // [PROJECT_NAME]
+    // Miscellaneous
+    char* project_name; // NAME for `new` option
+    char* build_file_path; // path to build.galo file for `build` option
+    char* main_file_path; // path to main.galo file for `run` option
+    StringList* file_build_options; // build options extracted from shebangs in main.galo
 } BuildArguments;
 
 
@@ -252,6 +255,7 @@ void* get_object(ObjectList* object_list, int index);
 
 StringList* create_string_list();
 void free_string_list(StringList* string_list);
+void free_string_owned_list(StringList* string_list);
 void add_string(StringList* string_list, char* string);
 char* get_string(StringList* string_list, int index); 
 bool contains_string(StringList* string_list, char* string);
@@ -291,8 +295,10 @@ BuildArguments process_args(int argc, char** argv);
 void debug_build_arguments(BuildArguments* build_arguments);
 void free_build_arguments(BuildArguments* build_arguments);
 
+void trim_trailing_whitespace(char* s);
 const char* read_file(char* filename);
 void preprocess(char* filename, StringList* source_code_file_names, StringList* source_code_files);
+void preprocess_with_build_options(char* file_name, StringList* source_code_file_names, StringList* source_code_files, StringList* file_build_options);
 
 void debug_lexer(TokenList* token_list);
 void debug_lexer_reshape(TokenList* token_list);

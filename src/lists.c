@@ -170,6 +170,14 @@ void free_string_list(StringList* string_list) {
     free(string_list->strings);
     free(string_list);
 }
+void free_string_owned_list(StringList* string_list) {
+    if (!string_list) return;
+    for (int i = 0; i < string_list->size; i++) {
+        free((void*)string_list->strings[i]);
+    }
+    free(string_list->strings);
+    free(string_list);
+}
 void add_string(StringList* string_list, char* string) {
     if (string_list->size >= string_list->capacity) {
         string_list->capacity *= 2;

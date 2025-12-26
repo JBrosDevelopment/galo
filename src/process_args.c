@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #if defined(_WIN32)
     #include <direct.h>   // _getcwd
@@ -67,10 +68,10 @@ galo interpret project/main.galo --interpret-debug
     starts the interpreter with the main.galo file and enables debug mode
 
 galo build 
-    requires current directory to have build.galo or main.galo with build options
+    requires current directory to have build.galo with build options
 
-galo run project/main.galo -- arg1 arg2
-    requires project/main.galo to have build options or build.galo to be present in the same directory
+galo run project/main.galo
+    requires project/main.galo to have build options
 
 galo new MyProject
     creates directory MyProject in current directory and adds a basic src/main.galo and build.galo file
@@ -95,6 +96,8 @@ void print_option_string(char* option_name, char* option_value); // forward decl
 void print_option_bool(char* option_name, bool option_value); // forward declaration
 void print_option_int(char* option_name, int option_value); // forward declaration
 int get_current_directory(char *buffer, size_t size); // forward declaration
+static int dir_exists(const char* path); // forward declaration
+static int file_exists(const char* path); // forward declaration
 
 BuildArguments process_args(int argc, char** argv) {
     // for debugging
@@ -107,20 +110,23 @@ BuildArguments process_args(int argc, char** argv) {
     build_arguments.input_dirs = create_string_list();
     build_arguments.input_files = create_string_list();
     build_arguments.passthrough_flags = create_string_list();
+    build_arguments.file_build_options = create_string_list();
     build_arguments.output_file = NULL;
     build_arguments.compiler = NULL;
     build_arguments.target_lang = NULL;
     build_arguments.project_name = NULL;
+    build_arguments.build_file_path = NULL;
+    build_arguments.main_file_path = NULL;
     build_arguments.emit_tokens = false;
     build_arguments.emit_ast = false;
     build_arguments.emit_validator = false;
     build_arguments.emit_c = false;
     build_arguments.emit_obj = false;
     build_arguments.debug_symbols = false;
-    build_arguments.max_steps = -1;
     build_arguments.interpret_debug = false;
     build_arguments.emit_headers = false;
     build_arguments.single_file = false;
+    build_arguments.max_steps = -1;
 
     int index = 1; // start at 1 to skip program name
     
@@ -255,7 +261,7 @@ void parse_parse_args_and_flags(int argc, char** argv, int* index, BuildArgument
                     printf("Error: Expected value for argument `%s` in position %d. Use `galo help` for more information.\n", flag_name, *index - 1);
                     exit(1);
                 } else {
-                    argument_value = argv[*index];
+                    argument_value = strdup(argv[*index]);
                 }
             }
             
@@ -302,7 +308,7 @@ void parse_parse_args_and_flags(int argc, char** argv, int* index, BuildArgument
                 printf("Error: Expected value for argument `%s` in position %d. Use `galo help` for more information.\n", argument_name, *index - 1);
                 exit(1);
             } else {
-                argument_value = argv[*index];
+                argument_value = strdup(argv[*index]);
             }
 
             if (strcmp(argument_name, "i") == 0) {
@@ -360,7 +366,9 @@ void check_required_arguments(BuildArguments* build_arguments) {
             // instead of throwing an error, assume current directory
             char current_dir[1024];
             if (get_current_directory(current_dir, sizeof(current_dir))) {
-                add_string(build_arguments->input_dirs, current_dir);
+                char* current_dir_copy = strdup(current_dir);
+                trim_trailing_whitespace(current_dir_copy);
+                add_string(build_arguments->input_dirs, current_dir_copy);
             } else {
                 printf("Error: No input directory provided for `build` option and failed to get current directory. Use `galo help` for more information.\n");
                 exit(1);
@@ -382,7 +390,6 @@ void check_required_arguments(BuildArguments* build_arguments) {
                 sprintf(main_file_path, "%s/%s", current_dir, target_file_name);
             #endif
             add_string(build_arguments->input_files, main_file_path);
-            free(main_file_path);
         }
     } else if (build_arguments->build_option == OPTION_NEW) {
         if (build_arguments->project_name == NULL) {
@@ -423,11 +430,132 @@ void check_unnecessary_arguments(BuildArguments* build_arguments) {
 }
 
 void check_build_option_compatibility(BuildArguments* build_arguments) {
-    // TODO
+    if (build_arguments->emit_c || build_arguments->emit_obj || build_arguments->debug_symbols) {
+        printf("Error: `build` option cannot be used with `compile`-specific flags. Use `galo help` for more information.\n");
+        exit(1);
+    }
+    if (build_arguments->target_lang != NULL || build_arguments->emit_headers || build_arguments->single_file) {
+        printf("Error: `build` option cannot be used with `transpile`-specific flags. Use `galo help` for more information.\n");
+        exit(1);
+    }
+    if (build_arguments->max_steps != -1 || build_arguments->interpret_debug) {
+        printf("Error: `build` option cannot be used with `interpret`-specific flags. Use `galo help` for more information.\n");
+        exit(1);
+    }
+    if (build_arguments->passthrough_flags->size > 0) {
+        printf("Error: `build` option cannot be used with pass-through flags. Use `galo help` for more information.\n");
+        exit(1);
+    }
+
+    if (build_arguments->input_dirs->size == 0 || build_arguments->input_dirs == NULL) {
+        printf("Error: No input directory provided for `build` option. Use `galo help` for more information.\n");
+        exit(1);
+    }
+
+    char* build_file = NULL;
+    for (int i = 0; i < build_arguments->input_dirs->size; i++) {
+        char* dir = get_string(build_arguments->input_dirs, i);
+
+        if (!dir_exists(dir)) {
+            printf("Error: Input directory `%s` does not exist. Use `galo help` for more information.\n", dir);
+            exit(1);
+        }
+
+        size_t path_length = strlen(dir) + strlen("/build.galo") + 1;
+        char* possible_build_file = malloc(path_length);
+        snprintf(possible_build_file, path_length, "%s/build.galo", dir);
+        
+        if (file_exists(possible_build_file)) {
+            if (build_file != NULL) {
+                printf("Error: Multiple build.galo files found for `build` option (`%s` and `%s`). Use `galo help` for more information.\n", build_file, possible_build_file);
+                free(possible_build_file);
+                exit(1);
+            }
+            build_file = possible_build_file;
+        } else {
+            free(possible_build_file);
+        }
+    }
+
+    if (build_file == NULL) {
+        printf("Error: No build.galo file found in provided input directories for `build` option. Use `galo help` for more information.\n");
+        exit(1);
+    }
 }
 
 void check_run_option_compatibility(BuildArguments* build_arguments) {
-    // TODO    
+    if (build_arguments->emit_c || build_arguments->emit_obj || build_arguments->debug_symbols) {
+        printf("Error: `run` option cannot be used with `compile`-specific flags. Use `galo help` for more information.\n");
+        exit(1);
+    }
+    if (build_arguments->target_lang != NULL || build_arguments->emit_headers || build_arguments->single_file) {
+        printf("Error: `run` option cannot be used with `transpile`-specific flags. Use `galo help` for more information.\n");
+        exit(1);
+    }
+    if (build_arguments->max_steps != -1 || build_arguments->interpret_debug) {
+        printf("Error: `run` option cannot be used with `interpret`-specific flags. Use `galo help` for more information.\n");
+        exit(1);
+    }
+    if (build_arguments->passthrough_flags->size > 0) {
+        printf("Error: `run` option cannot be used with pass-through flags. Use `galo help` for more information.\n");
+        exit(1);
+    }
+
+    if (build_arguments->input_files->size == 0 || build_arguments->input_files == NULL) {
+        printf("Error: No input file provided for `run` option. Use `galo help` for more information.\n");
+        exit(1);
+    }
+
+    char* main_file = NULL;
+    for (int i = 0; i < build_arguments->input_files->size; i++) {
+        char* file = get_string(build_arguments->input_files, i);
+
+        if (!file_exists(file)) {
+            printf("Error: Input file `%s` does not exist. Use `galo help` for more information.\n", file);
+            exit(1);
+        }
+
+        if (build_arguments->input_files->size == 1) {
+            main_file = file;
+            break;
+        }
+
+        size_t file_name_length = strlen(file);
+        if (file_name_length >= 9 && strcmp(&file[file_name_length - 9], "main.galo") == 0) {
+            if (main_file != NULL) {
+                printf("Error: Multiple main.galo files found for `run` option (`%s` and `%s`). Use `galo help` for more information.\n", main_file, file);
+                exit(1);
+            }
+            main_file = file;
+        }
+    }
+
+    if (main_file == NULL) {
+        if (build_arguments->input_files->size == 1) {
+            printf("Error: No galo file found in provided input files for `run` option. Use `galo help` for more information.\n");            
+        } else {
+            printf("Error: No main.galo file found in provided input files for `run` option. Use `galo help` for more information.\n");
+        }
+        exit(1);
+    }
+
+    StringList* unused_list1 = create_string_list();
+    StringList* unused_list2 = create_string_list();
+    preprocess_with_build_options(main_file, unused_list1, unused_list2, build_arguments->file_build_options);
+
+    if (build_arguments->file_build_options->size == 0) {
+        printf("Error: No build options found in main.galo for `run` option. Use `galo help` for more information.\n");
+        exit(1);
+    }
+    
+    char* command = get_string(build_arguments->file_build_options, 0);
+    if (strcmp(command, "interpret") != 0 && strcmp(command, "transpile") != 0 && strcmp(command, "compile") != 0) {
+        printf("Error: Invalid build option `%s` found in main.galo for `run`o ption. Only `interpret`, `transpile`, or `compile` are allowed. Use `galo help` for more information.\n", command);
+        exit(1);
+    }
+
+    free_string_list(unused_list1);
+    free_string_list(unused_list2);
 }
 
 int get_current_directory(char *buffer, size_t size) {
@@ -439,15 +567,28 @@ int get_current_directory(char *buffer, size_t size) {
     }
 }
 
+static int dir_exists(const char* path) {
+    struct stat s;
+    return stat(path, &s) == 0 && S_ISDIR(s.st_mode);
+}
+
+static int file_exists(const char* path) {
+    struct stat s;
+    return stat(path, &s) == 0 && S_ISREG(s.st_mode);
+}
+
 void free_build_arguments(BuildArguments* build_arguments) {
     if (build_arguments->input_dirs != NULL) {
-        free_string_list(build_arguments->input_dirs);
+        free_string_owned_list(build_arguments->input_dirs);
     }
     if (build_arguments->input_files != NULL) {
-        free_string_list(build_arguments->input_files);
+        free_string_owned_list(build_arguments->input_files);
     }
     if (build_arguments->passthrough_flags != NULL) {
         free_string_list(build_arguments->passthrough_flags);
+    }
+    if (build_arguments->file_build_options != NULL) {
+        free_string_owned_list(build_arguments->file_build_options);
     }
 }
 

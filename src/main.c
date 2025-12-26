@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
     free_node_list(ast);
     free_object_list(object_list);
     free_token_list(token_list);
-    free_string_list(source_code_files);
+    free_string_owned_list(source_code_files);
     free_string_list(source_code_file_names);
     free_build_arguments(&build_arguments);
 

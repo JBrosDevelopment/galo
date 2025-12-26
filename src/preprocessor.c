@@ -8,6 +8,15 @@ static char* read_word(char* s, char* out, int max); // Forward declaration
 void trim_trailing_whitespace(char* s); // Forward declaration
 
 void preprocess(char* file_name, StringList* source_code_file_names, StringList* source_code_files) {
+    StringList* file_build_options = create_string_list();
+    preprocess_with_build_options(file_name, source_code_file_names, source_code_files, file_build_options);
+    if (file_build_options->size > 0) {
+        printf("WARNING: File `%s` has build options which will be ignored\n", file_name);
+    }
+    free_string_list(file_build_options);
+}
+
+void preprocess_with_build_options(char* file_name, StringList* source_code_file_names, StringList* source_code_files, StringList* file_build_options) {
     const char* source_code = read_file(file_name);
     if (!source_code) {
         exit(1);
@@ -88,25 +97,29 @@ void preprocess(char* file_name, StringList* source_code_file_names, StringList*
             if (filename == NULL) {
                 printf("ERROR: Internal error in preprocessing, failed to get child file from parent file: `%s`\n", file_name);
             }
-            //char* child_file_build_options = NULL;
             if (contains_string(source_code_file_names, filename)) {
                 continue;
             }
-            preprocess(filename, source_code_file_names, source_code_files);
-            //if (child_file_build_options) {
-            //    trim_trailing_whitespace(filename);
-            //    trim_trailing_whitespace(child_file_build_options);
-            //    printf("WARNING: Child file `%s` has build options `%s` which are ignored\n", filename, child_file_build_options);
-            //}
+            StringList* child_file_build_options = create_string_list();
+            preprocess_with_build_options(filename, source_code_file_names, source_code_files, child_file_build_options);
+            if (child_file_build_options->size > 0) {
+                trim_trailing_whitespace(filename);
+                printf("WARNING: Child file `%s` has build options which will be ignored\n", filename);
+            }
+            free_string_list(child_file_build_options);
         } else if (strcmp(directive, "galo") == 0) {
             if (*rest == '\0') {
                 fprintf(stderr, "ERROR: galo requires arguments in file: `%s`\n", file_name);
                 exit(1);
             }
     
-            // this is handled in process_args.c
-            //char* args = strdup(rest);
-            //*file_build_options = args;
+            // Read build options, separated by spaces
+            while (*rest != '\0') {
+                char option[128];
+                rest = read_word(rest, option, sizeof(option));
+                add_string(file_build_options, strdup(option));
+                rest = skip_spaces(rest);
+            }
         } else {
             fprintf(stderr, "ERROR: Unknown shebang directive `%s` in file: `%s`\n", directive, file_name);
             exit(1);
@@ -119,7 +132,7 @@ void preprocess(char* file_name, StringList* source_code_file_names, StringList*
     free_object_list(shebang_pointers);
 
     add_string(source_code_file_names, file_name);
-    add_string(source_code_files, source_code);
+    add_string(source_code_files, (char*)source_code);
 }
 
 static char* skip_spaces(char* s) {
