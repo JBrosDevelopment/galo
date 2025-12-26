@@ -259,6 +259,8 @@ void free_string_owned_list(StringList* string_list);
 void add_string(StringList* string_list, char* string);
 char* get_string(StringList* string_list, int index); 
 bool contains_string(StringList* string_list, char* string);
+void string_list_to_owned_array(StringList* string_list, char*** array, int* count);
+void free_owned_string_array(char** array, int count);
 
 /////////////////////////////////////////////////////////////////////
 // VALIDATOR

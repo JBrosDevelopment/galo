@@ -112,6 +112,8 @@ void preprocess_with_build_options(char* file_name, StringList* source_code_file
                 fprintf(stderr, "ERROR: galo requires arguments in file: `%s`\n", file_name);
                 exit(1);
             }
+
+            add_string(file_build_options, strdup("galo"));
     
             // Read build options, separated by spaces
             while (*rest != '\0') {

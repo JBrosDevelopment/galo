@@ -196,3 +196,18 @@ bool contains_string(StringList* string_list, char* string) {
     }
     return 0;
 }
+
+void string_list_to_owned_array(StringList* string_list, char*** array, int* count) {
+    *count = string_list->size;
+    *array = (char**)malloc(sizeof(char*) * (*count));
+    for (int i = 0; i < string_list->size; i++) {
+        (*array)[i] = strdup(string_list->strings[i]);
+    }
+}
+
+void free_owned_string_array(char** array, int count) {
+    for (int i = 0; i < count; i++) {
+        free(array[i]);
+    }
+    free(array);
+}

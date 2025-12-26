@@ -212,7 +212,7 @@ bool parse_build_option(int argc, char** argv, int* index, BuildArguments* build
     }
     if (next_could_be_file) {
         if (*index < argc) {
-            char* possible_file = argv[*index];
+            char* possible_file = strdup(argv[*index]);
             if (possible_file[0] != '-') {
                 // not a flag, assume it's a file
                 add_string(build_arguments->input_files, possible_file);
@@ -222,7 +222,7 @@ bool parse_build_option(int argc, char** argv, int* index, BuildArguments* build
     }
     if (next_could_be_directory) {
         if (*index < argc) {
-            char* possible_dir = argv[*index];
+            char* possible_dir = strdup(argv[*index]);
             if (possible_dir[0] != '-') {
                 // not a flag, assume it's a directory
                 add_string(build_arguments->input_dirs, possible_dir);
@@ -545,14 +545,21 @@ void check_run_option_compatibility(BuildArguments* build_arguments) {
         exit(1);
     }
 
-    char* command = get_string(build_arguments->file_build_options, 0);
+    if (build_arguments->file_build_options->size < 1) {
+        printf("Error: Insufficient build options found in main.galo for `run` option. Use `galo help` for more information.\n");
+        exit(1);
+    }
+
+    char* command = get_string(build_arguments->file_build_options, 1);
     if (strcmp(command, "interpret") != 0 && strcmp(command, "transpile") != 0 && strcmp(command, "compile") != 0) {
-        printf("Error: Invalid build option `%s` found in main.galo for `run`o ption. Only `interpret`, `transpile`, or `compile` are allowed. Use `galo help` for more information.\n", command);
+        printf("Error: Invalid build option `%s` found in main.galo for `run` option. Only `interpret`, `transpile`, or `compile` are allowed. Use `galo help` for more information.\n", command);
         exit(1);
     }
 
     free_string_list(unused_list1);
     free_string_list(unused_list2);
+
+    build_arguments->main_file_path = main_file;
 }
 
 int get_current_directory(char *buffer, size_t size) {
