@@ -300,19 +300,17 @@ const char* read_file(char* filename);
 void preprocess(char* filename, StringList* source_code_file_names, StringList* source_code_files);
 void preprocess_with_build_options(char* file_name, StringList* source_code_file_names, StringList* source_code_files, StringList* file_build_options);
 
-void debug_lexer(TokenList* token_list);
-void debug_lexer_reshape(TokenList* token_list);
 const char* get_token_type_name(enum TokenType type);
 void lexer(const char* source_code, char* file_name, TokenList* token_list);
 void lexer_linker(StringList* source_code_file_names, StringList* source_code_files, TokenList* token_list);
+void emit_tokens(TokenList* token_list, char* output_file);
 
 void parser(TokenList* tokens, ObjectList* object_list, NodeList* ast, int* index);
 const char* get_node_type_name(enum NodeType type);
-void debug_parser(NodeList* ast);
-void debug_parser_node(Node* node);
+void emit_ast(NodeList* ast, char* output_file);
 
 void validator(NodeList* ast, Validator_Object* validator_object);
-void debug_validator(Validator_Object* validator_object);
+void emit_validator(Validator_Object* validator_object, char* output_file);
 
 void build_option_new(char* project_name);
 void build_option_version();

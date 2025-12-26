@@ -124,8 +124,8 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
 }
 
 Parameter* parse_parameter_list(TokenList* tokens, ObjectList* object_list, int* index, int max_parameters, enum TokenType Seperator, enum TokenType End, Parameter* parameters, int* parameter_count) {
-    Token* param_name;
-    Token* param_type;
+    Token* param_name = NULL;
+    Token* param_type = NULL;
     int expected = 1; // 1 for name, 2 for type, 3 for comma
     while (get_token(tokens, *index)->type != End) {
         if (expected == 1) {
@@ -674,154 +674,166 @@ const char* get_node_type_name(enum NodeType type) {
 
 }
 
-void debug_parser_node(Node* node) {
+void debug_parser_node(Node* node, FILE* out) {
     if (node->type == NODE_CONSTANT) {
         Token* token = (Token*)node->data;
         if (token->type == TOKEN_CONSTANT_STRING) {
-            printf("\"%s\" ", token->value);
+            fprintf(out, "\"%s\" ", token->value);
         } else {
-            printf("%s ", token->value);
+            fprintf(out, "%s ", token->value);
         }
     }
     else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scope = (ScopedIdentifier*)node->data;
         for (int i = 0; i < scope->size; i++) {
-            printf("%s ", scope->scope[i]->value);
+            fprintf(out, "%s ", scope->scope[i]->value);
         }
     }
     else if (node->type == NODE_VARIABLE_DECLARATION) {
         VariableDeclaration* var_decl = (VariableDeclaration*)node->data;
         if (var_decl->value.type == NODE_EMPTY) {
-            printf("let %s %s", var_decl->name->value, var_decl->type->value);
+            fprintf(out, "let %s %s", var_decl->name->value, var_decl->type->value);
         } else {
-            printf("let %s %s = ", var_decl->name->value, var_decl->type->value);
-            debug_parser_node(&var_decl->value);
+            fprintf(out, "let %s %s = ", var_decl->name->value, var_decl->type->value);
+            debug_parser_node(&var_decl->value, out);
         }
     }
     else if (node->type == NODE_VARIABLE_ASSIGNMENT) {
         VariableAssignment* var_assign = (VariableAssignment*)node->data;
         for (int i = 0; i < var_assign->identifier.size; i++) {
-            printf("%s ", var_assign->identifier.scope[i]->value);
+            fprintf(out, "%s ", var_assign->identifier.scope[i]->value);
         }
-        printf("= ");
-        debug_parser_node(&var_assign->value);
+        fprintf(out, "= ");
+        debug_parser_node(&var_assign->value, out);
     }
     else if (node->type == NODE_FUNCTION_DECLARATION) {
         FunctionDeclaration* func_decl = (FunctionDeclaration*)node->data;
-        printf("fun");
+        fprintf(out, "fun");
         if (func_decl->struct_implementation) {
-            printf(" %s", func_decl->struct_implementation->value);
+            fprintf(out, " %s", func_decl->struct_implementation->value);
         }
-        printf(" %s(", func_decl->name->value);
+        fprintf(out, " %s(", func_decl->name->value);
         for (int i = 0; i < func_decl->parameter_count; i++) {
             if (i > 0) {
-                printf(", ");
+                fprintf(out, ", ");
             }
-            printf("%s %s", func_decl->parameters[i].name->value, func_decl->parameters[i].type->value);
+            fprintf(out, "%s %s", func_decl->parameters[i].name->value, func_decl->parameters[i].type->value);
         }
-        printf(") %s\n", func_decl->return_type->value);
+        fprintf(out, ") %s\n", func_decl->return_type->value);
 
         for (int i = 0; i < func_decl->body->size; i++) {
-            debug_parser_node(get_node(func_decl->body, i));
-            printf("\n");
+            debug_parser_node(get_node(func_decl->body, i), out);
+            fprintf(out, "\n");
         }
-        printf("end");
+        fprintf(out, "end");
     } else if (node->type == NODE_RETURN_STATEMENT) {
         ReturnStatement* return_stmt = (ReturnStatement*)node->data;
-        printf("return ");
+        fprintf(out, "return ");
         if (return_stmt->value.type != NODE_EMPTY) {
-            debug_parser_node(&return_stmt->value);            
+            debug_parser_node(&return_stmt->value, out);
         }
     } else if(node->type == NODE_STRUCT_DECLARATION) {
         StructDeclaration* struct_decl = (StructDeclaration*)node->data;
-        printf("struct %s\n", struct_decl->name->value);
+        fprintf(out, "struct %s\n", struct_decl->name->value);
         for (int i = 0; i < struct_decl->field_count; i++) {
-            printf("    %s %s\n", struct_decl->fields[i].name->value, struct_decl->fields[i].type->value);
+            fprintf(out, "    %s %s\n", struct_decl->fields[i].name->value, struct_decl->fields[i].type->value);
         }
-        printf("end");
+        fprintf(out, "end");
     } else if(node->type == NODE_FUNCTION_CALL) {
         FunctionCall* func_call = (FunctionCall*)node->data;
         for (int i = 0; i < func_call->scope_size; i++) {
-            printf("%s", func_call->scope[i]->value);
+            fprintf(out, "%s", func_call->scope[i]->value);
             if (i < func_call->scope_size - 1) {
-                printf(" ");
+                fprintf(out, " ");
             }
         }
-        printf("( ");
+        fprintf(out, "( ");
         for (int i = 0; i < func_call->argument_count; i++) {
             if (i > 0) {
-                printf(", ");
+                fprintf(out, ", ");
             }
-            debug_parser_node(&func_call->arguments[i]);
+            debug_parser_node(&func_call->arguments[i], out);
         }
-        printf(")");
+        fprintf(out, ") ");
     } else if (node->type == NODE_OPERATION) {
         Operation* operation = (Operation*)node->data;
         if (operation->is_not_operator) {
-            printf("( not ");
-            debug_parser_node(operation->left);
-            printf(") ");
+            fprintf(out, "( not ");
+            debug_parser_node(operation->left, out);
+            fprintf(out, ") ");
             return;
         }
-        printf("( ");
-        debug_parser_node(operation->left);
-        printf("%s ", operation->operator->value);
-        debug_parser_node(operation->right);
-        printf(") ");
+        fprintf(out, "( ");
+        debug_parser_node(operation->left, out);
+        fprintf(out, "%s ", operation->operator->value);
+        debug_parser_node(operation->right, out);
+        fprintf(out, ") ");
     } else if (node->type == NODE_IF_STATEMENT) {
         IfStatement* if_stmt = (IfStatement*)node->data;
-        printf("if ");
-        debug_parser_node(&if_stmt->condition);
-        printf("\n");
+        fprintf(out, "if ");
+        debug_parser_node(&if_stmt->condition, out);
+        fprintf(out, "\n");
         for (int i = 0; i < if_stmt->body->size; i++) {
-            debug_parser_node(get_node(if_stmt->body, i));
-            printf("\n");
+            debug_parser_node(get_node(if_stmt->body, i), out);
+            fprintf(out, "\n");
         }
         if (if_stmt->elif_count > 0) {
             for (int i = 0; i < if_stmt->elif_count; i++) {
                 ElifIfStatement* elif = &if_stmt->elifs[i];
-                printf("elif ");
+                fprintf(out, "elif ");
                 Node condition = elif->condition;
-                debug_parser_node(&condition);
-                printf("\n");
+                debug_parser_node(&condition, out);
+                fprintf(out, "\n");
                 for (int j = 0; j < elif->body->size; j++) {
-                    debug_parser_node(get_node(elif->body, j));
-                    printf("\n");
+                    debug_parser_node(get_node(elif->body, j), out);
+                    fprintf(out, "\n");
                 }
             }
         }
         if (if_stmt->else_body != NULL && if_stmt->else_body->size > 0) {
-            printf("else\n");
+            fprintf(out, "else\n");
             for (int i = 0; i < if_stmt->else_body->size; i++) {
-                debug_parser_node(get_node(if_stmt->else_body, i));
-                printf("\n");
+                debug_parser_node(get_node(if_stmt->else_body, i), out);
+                fprintf(out, "\n");
             }
         }
-        printf("end");
+        fprintf(out, "end");
     } else if(node->type == NODE_WHILE_LOOP) {
         WhileLoop* while_loop = (WhileLoop*)node->data;
-        printf("while ");
-        debug_parser_node(&while_loop->condition);
-        printf("\n");
+        fprintf(out, "while ");
+        debug_parser_node(&while_loop->condition, out);
+        fprintf(out, "\n");
         for (int i = 0; i < while_loop->body->size; i++) {
-            debug_parser_node(get_node(while_loop->body, i));
-            printf("\n");
+            debug_parser_node(get_node(while_loop->body, i), out);
+            fprintf(out, "\n");
         }
-        printf("end");
+        fprintf(out, "end");
     }
     else {
-        printf("[Error, TYPE: %s] ", get_node_type_name(node->type));
+        fprintf(out, "[Error, TYPE: %s] ", get_node_type_name(node->type));
     }
 }
 
-void debug_parser(NodeList* ast) {
-    printf("AST: %d\n", ast->size);
+void debug_parser(NodeList* ast, FILE* out) {
+    fprintf(out, "AST Reshape: %d\n", ast->size);
     for (int i = 0; i < ast->size; i++) {
         Node* node = get_node(ast, i);
-        debug_parser_node(node);
-        printf("\n");
+        debug_parser_node(node, out);
+        fprintf(out, "\n");
     }
-    printf("Finished debugging AST\n");
+    fprintf(out, "End AST\n");
+}
+
+void emit_ast(NodeList* ast, char* output_file) {
+    FILE* file = fopen(output_file, "w");
+    if (file == NULL) {
+        printf("Error: Could not open file %s for writing ast.\n", output_file);
+        return;
+    }
+
+    debug_parser(ast, file);
+
+    fclose(file);
 }
 
 #endif // Parser_C

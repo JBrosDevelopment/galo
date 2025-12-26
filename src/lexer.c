@@ -346,26 +346,42 @@ const char* get_token_type_name(enum TokenType type) {
     return error_message;
 }
 
-void debug_lexer(TokenList* token_list) {
-    printf("Tokens:\n");
+void debug_lexer(TokenList* token_list, FILE* out) {
+    fprintf(out, "Tokens:\n");
     for (int i = 0; i < token_list->size; i++) {
         Token* token = &token_list->tokens[i];
         char* type_name = (char*)get_token_type_name(token->type);
-        printf("Index: %d, Line: %d, Column: %d, Type: %s, Value: %s\n", i, token->line, token->column, type_name, token->value);
+        fprintf(out, "Index: %d, Line: %d, Column: %d, Type: %s, Value: %s\n", i, token->line, token->column, type_name, token->value);
     }
+    fprintf(out, "End Tokens.\n");
 }
 
-void debug_lexer_reshape(TokenList* token_list) {
-    printf("Tokens Reshaped:\n");
+void debug_lexer_reshape(TokenList* token_list, FILE* out) {
+    fprintf(out, "Tokens Reshaped:\n");
     for (int i = 0; i < token_list->size; i++) {
         Token* token = &token_list->tokens[i];
         if (token->type == TOKEN_CONSTANT_STRING) {
-            printf("\"%s\" ", token->value);
+            fprintf(out, "\"%s\" ", token->value);
             continue;
         }
-        printf("%s ", token->value);
+        fprintf(out, "%s ", token->value);
     }
-    printf("\n");
+    fprintf(out, "\n");
+    fprintf(out, "End Tokens Reshaped.\n");
+}
+
+void emit_tokens(TokenList* token_list, char* output_file) {
+    FILE* file = fopen(output_file, "w");
+    if (file == NULL) {
+        printf("Error: Could not open file %s for writing tokens.\n", output_file);
+        return;
+    }
+
+    debug_lexer(token_list, file);
+    fprintf(file, "\n");
+    debug_lexer_reshape(token_list, file);
+
+    fclose(file);
 }
 
 #endif // Lexer_C

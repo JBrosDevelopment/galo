@@ -343,7 +343,6 @@ int validate_node(Node* node, Validator_Object* validator_object) {
         FunctionCall* func_call = (FunctionCall*)node->data;
         ScopedIdentifier* scoped_func = (ScopedIdentifier*)node->data;
         
-        FunctionDeclaration* func_decl = NULL;
         int func_type_id = NO_EXPECTED_NODE;
         for (int i = 0; i < validator_object->functions->size; i++) {
             FunctionDeclaration* index_func_decl = (FunctionDeclaration*)validator_object->functions->objects[i];
@@ -489,7 +488,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                 
                 check_type_missmatch(arg_type_id, parameter_type_id, func_call->scope[0]->line, validator_object);
             }
-            
+
             int return_type_id = get_id_from_name(func_decl->return_type, validator_object);
             return return_type_id;
         }
@@ -626,38 +625,38 @@ void free_validator_object(Validator_Object* validator_object) {
     free_object_list(validator_object->predefined_functions);
 }
 
-void debug_validator(Validator_Object* validator_object) {
-    printf("Debugging Validator Table:\n");
-    printf("Structs:\n");
+void debug_validator(Validator_Object* validator_object, FILE* out) {
+    fprintf(out, "Debugging Validator Table:\n");
+    fprintf(out, "Structs:\n");
     for (int i = 0; i < validator_object->structs->size; i++) {
         StructDeclaration* struct_decl = (StructDeclaration*)validator_object->structs->objects[i];
-        printf("NAME: `%s` ID: `%d` LINE: `%d`\n", struct_decl->name->value, struct_decl->id, struct_decl->name->line);
+        fprintf(out, "NAME: `%s` ID: `%d` LINE: `%d`\n", struct_decl->name->value, struct_decl->id, struct_decl->name->line);
     }
-    printf("Functions:\n");
+    fprintf(out, "Functions:\n");
     for (int i = 0; i < validator_object->functions->size; i++) {
         FunctionDeclaration* func_decl = (FunctionDeclaration*)validator_object->functions->objects[i];
         if (func_decl->struct_implementation == NULL) {
-            printf("NAME: `%s` RETURN: `%s` PARAMS: `%d` ID: `%d` LINE: `%d`\n", func_decl->name->value, func_decl->return_type->value, func_decl->parameter_count, func_decl->id, func_decl->name->line);
+            fprintf(out, "NAME: `%s` RETURN: `%s` PARAMS: `%d` ID: `%d` LINE: `%d`\n", func_decl->name->value, func_decl->return_type->value, func_decl->parameter_count, func_decl->id, func_decl->name->line);
         } else {
             int implements_id = get_id_from_name(func_decl->struct_implementation, validator_object);
             if (implements_id == NO_EXPECTED_NODE) {
-                printf("NAME: `%s` RETURN: `%s` PARAMS: `%d` IMPLEMENTS: `%s` ID: `%d` LINE: `%d`\n", func_decl->name->value, func_decl->return_type->value, func_decl->parameter_count, func_decl->struct_implementation->value, func_decl->id, func_decl->name->line);
+                fprintf(out, "NAME: `%s` RETURN: `%s` PARAMS: `%d` IMPLEMENTS: `%s` ID: `%d` LINE: `%d`\n", func_decl->name->value, func_decl->return_type->value, func_decl->parameter_count, func_decl->struct_implementation->value, func_decl->id, func_decl->name->line);
             } else {
-                printf("NAME: `%s` RETURN: `%s` PARAMS: `%d` IMPLEMENTS_ID: `%d` ID: `%d` LINE: `%d`\n", func_decl->name->value, func_decl->return_type->value, func_decl->parameter_count, implements_id, func_decl->id, func_decl->name->line);
+                fprintf(out, "NAME: `%s` RETURN: `%s` PARAMS: `%d` IMPLEMENTS_ID: `%d` ID: `%d` LINE: `%d`\n", func_decl->name->value, func_decl->return_type->value, func_decl->parameter_count, implements_id, func_decl->id, func_decl->name->line);
             }
         }
     }
-    printf("Variables:\n");
+    fprintf(out, "Variables:\n");
     for (int i = 0; i < validator_object->variables->size; i++) {
         VariableDeclaration* var_decl = (VariableDeclaration*)validator_object->variables->objects[i];
-        printf("NAME: `%s` TYPE: `%s` ID: `%d` LINE: `%d`\n", var_decl->name->value, var_decl->type->value, var_decl->id, var_decl->name->line);
+        fprintf(out, "NAME: `%s` TYPE: `%s` ID: `%d` LINE: `%d`\n", var_decl->name->value, var_decl->type->value, var_decl->id, var_decl->name->line);
     }
-    printf("Active Variables:\n");
+    fprintf(out, "Active Variables:\n");
     for (int i = 0; i < validator_object->active_variables->size; i++) {
         int* var_id = get_int(validator_object->active_variables, i);
-        printf("ID: `%d`\n", *var_id);
+        fprintf(out, "ID: `%d`\n", *var_id);
     }
-    printf("End of Validator Table\n");
+    fprintf(out, "End of Validator Table\n");
 }
 
 bool function_is_predefined(Validator_Object* validator_object, ScopedIdentifier* path, PredefinedFunction** predefined_function) {
@@ -980,6 +979,18 @@ void add_predefined_functions(Validator_Object* validator_object) {
     add_object(validator_object->predefined_functions, &list_set_func, sizeof(PredefinedFunction));
 
     // REMEMBER: update validator_object->predefined_function_count if adding more   
+}
+
+void emit_validator(Validator_Object* validator_object, char* output_file) {
+    FILE* file = fopen(output_file, "w");
+    if (file == NULL) {
+        printf("Error: Could not open file %s for writing validator.\n", output_file);
+        return;
+    }
+
+    debug_validator(validator_object, file);
+
+    fclose(file);
 }
 
 #endif // Validator_C
