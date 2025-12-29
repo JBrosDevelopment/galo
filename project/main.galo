@@ -21,6 +21,16 @@ let x int = 20
 let y int = x
 x = (x + 12)
 
+let a bool = true
+let b bool = false
+let c bool = (a or false)
+let d bool = ((a or b) and c)
+let e bool = (not a)
+
+let f byte = 9
+let g float = -99.1
+let h int = cast(int, f + g)
+
 #print(x)
 
 

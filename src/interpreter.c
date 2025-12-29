@@ -176,7 +176,7 @@ static void scope_add_variable(Interpreter_Object* interp, int var_id) {
 }
 
 GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
-    if (node->type == NODE_STRUCT_DECLARATION) {
+    if (node->type == NODE_STRUCT_DECLARATION || NODE_FUNCTION_DECLARATION) {
         return void_object_value(); // handled by validator
     }
     else if (node->type == NODE_VARIABLE_DECLARATION) {
@@ -316,6 +316,152 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         else {
             printf("UNKNOWN CONSTANT TYPE: %s\n", get_token_type_name(token->type));
         }
+    } else if (node->type == NODE_OPERATION) {
+        Operation* op = (Operation*)node->data;
+        
+        GaloObject lhs = interpret_node(interp, op->left);
+        
+        if (op->is_not_operator) {
+            bool value = !*(bool*)lhs.data;
+            GaloObject value_copy;
+            value_copy.type_id = BOOLEAN_TYPE;
+            value_copy.size = sizeof(bool);
+            value_copy.data = malloc(sizeof(bool));
+            *(bool*)value_copy.data = value;
+            free(lhs.data);
+            return value_copy;
+        }
+
+        const char* operator = op->operator->value;
+        
+        if (op->operator->type == TOKEN_OPERATOR_ARITHMETIC || op->operator->type == TOKEN_OPERATOR_COMPARISON) {
+            GaloObject rhs = interpret_node(interp, op->right);
+
+            double left_value = 0;
+            double right_value = 0;
+            int size = sizeof(int);
+            if (lhs.type_id == FLOAT_TYPE || rhs.type_id == FLOAT_TYPE) {
+                size = sizeof(float);
+            } else if (lhs.type_id == BYTE_TYPE || rhs.type_id == BYTE_TYPE) {
+                size = sizeof(unsigned char);
+            }
+
+            if (lhs.type_id == FLOAT_TYPE) {
+                left_value = *(float*)lhs.data;
+            } else if (lhs.type_id == INT_TYPE) {
+                left_value = *(int*)lhs.data;
+            } else if (lhs.type_id == BYTE_TYPE) {
+                left_value = *(unsigned char*)lhs.data;
+            } else {
+                printf("Type not supported for arithmetic operation: %d\n", lhs.type_id);
+                exit(1);
+            }
+            if (rhs.type_id == FLOAT_TYPE) {
+                right_value = *(float*)rhs.data;
+            } else if (rhs.type_id == INT_TYPE) {
+                right_value = *(int*)rhs.data;
+            } else if (rhs.type_id == BYTE_TYPE) {
+                right_value = *(unsigned char*)rhs.data;
+            } else {
+                printf("Type not supported for arithmetic operation: %d\n", rhs.type_id);
+                exit(1);
+            }
+
+            if (op->operator->type == TOKEN_OPERATOR_ARITHMETIC) {
+                double result = 0;
+                if (strcmp(operator, "+") == 0) {
+                    result = left_value + right_value;
+                } else if (strcmp(operator, "-") == 0) {
+                    result = left_value - right_value;
+                } else if (strcmp(operator, "*") == 0) {
+                    result = left_value * right_value;
+                } else if (strcmp(operator, "/") == 0) {
+                    if (right_value == 0) {
+                        printf("Runtime error: Division by zero\n");
+                        exit(1);
+                    }
+                    result = left_value / right_value;
+                } else if (strcmp(operator, "%") == 0) {
+                    result = (int)left_value % (int)right_value;
+                }
+
+                GaloObject value_copy;
+                if (size == sizeof(int)) {
+                    value_copy.type_id = INT_TYPE;
+                } else if (size == sizeof(float)) {
+                    value_copy.type_id = FLOAT_TYPE;
+                } else if (size == sizeof(unsigned char)) {
+                    value_copy.type_id = BYTE_TYPE;
+                }
+                value_copy.size = size;
+                value_copy.data = malloc(size);
+                if (size == sizeof(int)) {
+                    *(int*)value_copy.data = (int)result;
+                } else if (size == sizeof(float)) {
+                    *(float*)value_copy.data = (float)result;
+                } else if (size == sizeof(unsigned char)) {
+                    *(unsigned char*)value_copy.data = (unsigned char)result;
+                }
+                free(lhs.data);
+                free(rhs.data);
+                return value_copy;
+            } else { // TOKEN_OPERATOR_COMPARISON
+                bool result = false;
+                if (strcmp(operator, "==") == 0) {
+                    result = left_value == right_value;
+                } else if (strcmp(operator, "!=") == 0) {
+                    result = left_value != right_value;
+                } else if (strcmp(operator, ">") == 0) {
+                    result = left_value > right_value;
+                } else if (strcmp(operator, "<") == 0) {
+                    result = left_value < right_value;
+                } else if (strcmp(operator, ">=") == 0) {
+                    result = left_value >= right_value;
+                } else if (strcmp(operator, "<=") == 0) {
+                    result = left_value <= right_value;
+                }
+                GaloObject value_copy;
+                value_copy.type_id = BOOLEAN_TYPE;
+                value_copy.size = sizeof(bool);
+                value_copy.data = malloc(sizeof(bool));
+                *(bool*)value_copy.data = result;
+                free(lhs.data);
+                free(rhs.data);
+                return value_copy;
+            }
+        } else if (op->operator->type == TOKEN_OPERATOR_LOGICAL) {
+            bool left_value = *(bool*)lhs.data;
+            bool result = false;
+            
+            if (strcmp(operator, "and") == 0) {
+                if (left_value == false) { // short circuit
+                    result = false;
+                } else {
+                    GaloObject rhs = interpret_node(interp, op->right);
+                    bool right_value = *(bool*)rhs.data;
+                    result = left_value && right_value;
+                    free(rhs.data);
+                }
+            } else if (strcmp(operator, "or") == 0) {
+                if (left_value == true) { // short circuit
+                    result = true;
+                } else {
+                    GaloObject rhs = interpret_node(interp, op->right);
+                    bool right_value = *(bool*)rhs.data;
+                    result = left_value || right_value;
+                    free(rhs.data);
+                }
+            } 
+
+            GaloObject value_copy;
+            value_copy.type_id = BOOLEAN_TYPE;
+            value_copy.size = sizeof(bool);
+            value_copy.data = malloc(sizeof(bool));
+            *(bool*)value_copy.data = result;
+            free(lhs.data);
+            return value_copy;
+        }
+
     } else {
         printf("TODO nodetype: %s\n", get_node_type_name(node->type));
         exit(1);

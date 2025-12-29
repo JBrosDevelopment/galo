@@ -152,7 +152,7 @@ void check_type_missmatch(int lhs_type_id, int rhs_type_id, int line, Validator_
         return;
     } else if (lhs_type_id == INT_TYPE && (rhs_type_id == FLOAT_TYPE || rhs_type_id == BYTE_TYPE)) {
         return;
-    } else if (lhs_type_id == BYTE_TYPE && rhs_type_id == INT_TYPE) {
+    } else if (lhs_type_id == BYTE_TYPE && (rhs_type_id == INT_TYPE || rhs_type_id == FLOAT_TYPE)) {
         return;
     }
     if (lhs_type_id != rhs_type_id) {
@@ -161,11 +161,11 @@ void check_type_missmatch(int lhs_type_id, int rhs_type_id, int line, Validator_
         if (lhs_type_name == NULL && rhs_type_name == NULL) {
             fprintf(stderr, "type mismatch: lhs id:`%d`, rhs id:`%d` in line %d\n", lhs_type_id, rhs_type_id, line);
         } else if (lhs_type_name == NULL) {
-            fprintf(stderr, "type mismatch: lhs id:`%d`, rhs name:`%s` in line %d\n", lhs_type_id, rhs_type_name, line);
+            fprintf(stderr, "type mismatch: lhs id:`%d`, rhs type:`%s` in line %d\n", lhs_type_id, rhs_type_name, line);
         } else if (rhs_type_name == NULL) {
-            fprintf(stderr, "type mismatch: lhs name:`%s`, rhs id:`%d` in line %d\n", lhs_type_name, rhs_type_id, line);
+            fprintf(stderr, "type mismatch: lhs type:`%s`, rhs id:`%d` in line %d\n", lhs_type_name, rhs_type_id, line);
         } else {
-            fprintf(stderr, "type mismatch: lhs name:`%s`, rhs name:`%s` in line %d\n", lhs_type_name, rhs_type_name, line);
+            fprintf(stderr, "type mismatch: lhs type:`%s`, rhs type:`%s` in line %d\n", lhs_type_name, rhs_type_name, line);
         }
         exit(1);
     }
@@ -295,6 +295,10 @@ int validate_node(Node* node, Validator_Object* validator_object) {
         switch (op->operator->type)
         {
         case TOKEN_OPERATOR_ARITHMETIC:
+            if ((lhs_type_id == FLOAT_TYPE || rhs_type_id == FLOAT_TYPE) && strcmp(op->operator->value, "%") == 0) {
+                printf("Arithmetic modulo operator expects `int` or `byte`, but got: %s and %s, in line %d\n", get_name_from_id(lhs_type_id, validator_object), get_name_from_id(rhs_type_id, validator_object), op->operator->line);
+                exit(1);
+            }
             if ((lhs_type_id == FLOAT_TYPE && (rhs_type_id == INT_TYPE || rhs_type_id == BYTE_TYPE)) || ((lhs_type_id == INT_TYPE || lhs_type_id == BYTE_TYPE) && rhs_type_id == FLOAT_TYPE) || (lhs_type_id == FLOAT_TYPE && rhs_type_id == FLOAT_TYPE)) {
                 return FLOAT_TYPE;
             } else if ((lhs_type_id == INT_TYPE && rhs_type_id == BYTE_TYPE) || (lhs_type_id == BYTE_TYPE && rhs_type_id == INT_TYPE) || (lhs_type_id == INT_TYPE && rhs_type_id == INT_TYPE)) {
@@ -985,7 +989,17 @@ void add_predefined_functions(Validator_Object* validator_object) {
     list_set_func.parent_id = LIST_TYPE;
     add_object(validator_object->predefined_functions, &list_set_func, sizeof(PredefinedFunction));
 
-    // REMEMBER: update validator_object->predefined_function_count if adding more   
+    PredefinedFunction cast_func;
+    cast_func.name = "cast";
+    cast_func.id = validator_object->last_function_id++;
+    cast_func.parameter_count = 2;
+    cast_func.parameter_ids = malloc(2 * sizeof(int));
+    cast_func.parameter_ids[0] = TYPE_AS_TYPE;
+    cast_func.parameter_ids[1] = INT_TYPE;
+    cast_func.infinite_parameters = false;
+    cast_func.return_id = ANY_TYPE;
+    cast_func.parent_id = -1;
+    add_object(validator_object->predefined_functions, &cast_func, sizeof(PredefinedFunction));
 }
 
 void emit_validator(Validator_Object* validator_object, char* output_file) {
