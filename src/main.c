@@ -74,7 +74,16 @@ int main(int argc, char *argv[]) {
     } else if (build_arguments.build_option == OPTION_TRANSPILE) {
         printf("Transpile option is not yet implemented.\n");
     } else if (build_arguments.build_option == OPTION_INTERPRET) {
-        printf("Interpret option is not yet implemented.\n");
+        Interpreter_Object* interpreter_object = create_interpreter_object(ast, &validator_object);
+
+        int input_argc = 0;
+        char** input_argv = NULL;
+        string_list_to_owned_array(build_arguments.passthrough_flags, &input_argv, &input_argc);
+        
+        interpret(interpreter_object, input_argc, input_argv);
+        
+        free_owned_string_array(input_argv, input_argc);
+        free_interpreter_object(interpreter_object);
     } else {
         printf("Error: Unknown build option.\n"); // Should be unreachable
         return 1;

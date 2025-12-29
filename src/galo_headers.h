@@ -135,16 +135,22 @@ typedef struct NodeList_t {
     int capacity;
 } NodeList;
 
+typedef struct Identifier_t {
+    Token* name;
+    int id;
+} Identifier;
+
 typedef struct VariableDeclaration_t {
     Token* name;
     Token* type;
     Node value;
     int id;
+    int type_id;
 } VariableDeclaration;
 
 typedef struct Parameter_t {
-    Token* name;
-    Token* type;
+    Identifier name;
+    Identifier type;
 } Parameter;
 
 typedef struct FunctionDeclaration_t {
@@ -165,7 +171,7 @@ typedef struct StructDeclaration_t {
 } StructDeclaration;
 
 typedef struct ScopedIdentifier_t {
-    Token** scope;
+    Identifier* scope;
     int size;
 } ScopedIdentifier;
 
@@ -175,7 +181,7 @@ typedef struct VariableAssignment_t {
 } VariableAssignment;
 
 typedef struct FunctionCall_t {
-    Token** scope;
+    Identifier* scope;
     int scope_size;
     Node* arguments;
     int argument_count;
@@ -266,6 +272,17 @@ void free_owned_string_array(char** array, int count);
 // VALIDATOR
 /////////////////////////////////////////////////////////////////////
 
+#define NO_EXPECTED_NODE -67
+#define VOID_TYPE -1
+#define INT_TYPE -2
+#define STRING_TYPE -3
+#define BOOLEAN_TYPE -4
+#define FLOAT_TYPE -5
+#define BYTE_TYPE -6
+#define LIST_TYPE -7
+#define TYPE_AS_TYPE -8 /*used in `list init(type)`*/
+#define ANY_TYPE -9 /*used in `list get(list, index)` as return type*/
+
 typedef struct PredefinedFunction_t {
     char* name;
     int id;
@@ -282,12 +299,78 @@ typedef struct Validator_Object_t {
     ObjectList* structs;
     ObjectList* variables;
     IntList* active_variables;
-    int last_id;
+    int last_variable_id;
+    int last_struct_id;
+    int last_function_id;
 } Validator_Object;
 
 Validator_Object create_validator_object();
 void free_validator_object(Validator_Object* validator_object);
 void add_predefined_functions(Validator_Object* validator_object);
+VariableDeclaration* get_variable_from_id(int id, Validator_Object* validator_object);
+StructDeclaration* get_struct_from_id(int id, Validator_Object* validator_object);
+FunctionDeclaration* get_function_from_id(int id, Validator_Object* validator_object);
+
+/////////////////////////////////////////////////////////////////////
+// INTERPRETER
+/////////////////////////////////////////////////////////////////////
+
+typedef struct LValue_t {
+    void* address;
+    int size;
+    int variable_id;
+    int type_id;
+} LValue;
+
+typedef struct GaloObject_t {
+    int type_id;
+    int size;
+    void* data;
+} GaloObject;
+
+typedef struct {
+    int* variable_ids;
+    int  count;
+    int  capacity;
+} ScopeFrame;
+
+typedef struct CallFrame_t {
+    int function_id;
+    Node* return_node;
+    int scope_depth_at_entry;
+} CallFrame;
+
+typedef struct Interpreter_Object_t {
+    // Program data
+    Validator_Object* validator_object;
+    NodeList* ast;
+
+    // Runtime storage
+    GaloObject* variables;
+    int variable_count;
+
+    // Scoping
+    ScopeFrame* scope_stack;
+    int scope_depth;
+    int scope_capacity;
+
+    // Call stack
+    CallFrame* call_stack;
+    int call_depth;
+    int call_capacity;
+
+    // Execution state
+    Node* current_node;
+    GaloObject return_value;
+    bool has_returned;
+
+    // Builtins
+    GaloObject (**builtins)(struct Interpreter_Object_t*, GaloObject* args, int arg_count);
+    int builtin_count;
+} Interpreter_Object;
+
+Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* validator_object);
+void free_interpreter_object(Interpreter_Object* interpreter_object);
 
 /////////////////////////////////////////////////////////////////////
 // FUNCTIONS AND THEIR DEBUGGER FUNCTIONS
@@ -318,6 +401,8 @@ void build_option_new(char* project_name);
 void build_option_version();
 void build_option_help();
 
-void interpret(NodeList* ast);
+void interpret(Interpreter_Object* interpreter_object, int input_argc, char** input_argv);
+GaloObject interpret_node(Interpreter_Object* interpreter_object, Node* node);
+
 void transpile();
 void compile();

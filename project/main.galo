@@ -1,18 +1,44 @@
-#!galo interpret project/main.galo -- 1 5 9 3 -5 4 -99 123 
-#!include project/lib.galo
-
-fun main(args list) int
-    let x int = 0
-    let i int = 0
-    while (list length(args) > i)
-        let arg string = list get(args, i)
-        let val int = int convert(arg)
-        if (val == -6)
-            print("INVALID ARGUMENT:", arg, "\n")
-            return 1
-        end
-        x = add(x, val)
-        i = increment(i)
-    end
-    print("args total up to: ", x, "\n")
+struct P_empty
+    q float
+    z bool
 end
+
+struct Point
+    x int
+    y int
+    po P_empty
+    gg byte
+end
+
+let p Point
+p x = 99
+p y = 100
+p po q = 101
+p po z = true
+p gg = 11119
+
+let x int = 20
+let y int = x
+x = (x + 12)
+
+#print(x)
+
+
+##!galo interpret project/main.galo -- 1 5 9 3 -5 4 -99 123 
+##!include project/lib.galo
+#
+#fun main(args list) int
+#    let x int = 0
+#    let i int = 0
+#    while (list length(args) > i)
+#        let arg string = list get(args, i)
+#        let val int = int convert(arg)
+#        if (val == -6)
+#            print("INVALID ARGUMENT:", arg, "\n")
+#            return 1
+#        end
+#        x = add(x, val)
+#        i = increment(i)
+#    end
+#    print("args total up to: ", x, "\n")
+#end

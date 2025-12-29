@@ -61,6 +61,7 @@ void parse_var_decl(TokenList* tokens, ObjectList* object_list, int* index, Vari
     }
     var_decl->type = var_type;
     var_decl->id = -1;
+    var_decl->type_id = -1;
 
     (*index)++;
 
@@ -81,11 +82,14 @@ void parse_var_decl(TokenList* tokens, ObjectList* object_list, int* index, Vari
 
 void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, VariableAssignment* var_assign) {
     int size = 0;
-    Token** var_scope = malloc(sizeof(Token*) * 16); // max scope depth is 16 
+    Identifier* var_scope = malloc(sizeof(Identifier) * 16); // max scope depth is 16 
     
     while (get_token(tokens, *index)->type == TOKEN_IDENTIFIER) {
         Token* name = get_token(tokens, *index);
-        var_scope[size] = name;
+        Identifier ident;
+        ident.id = -1;
+        ident.name = name;
+        var_scope[size] = ident;
         if (size == 16) {
             printf("Error: Invalid variable assignment, max scope depth is 16 in line %d\n", get_token(tokens, *index)->line);
             exit(1);
@@ -99,7 +103,7 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
         exit(1);
     }
 
-    Token** var_scope_address = add_object(object_list, var_scope, sizeof(Token*) * size);
+    Identifier* var_scope_address = add_object(object_list, var_scope, sizeof(Identifier) * size);
 
     ScopedIdentifier scoped_identifier;
     scoped_identifier.scope = var_scope_address;
@@ -121,6 +125,10 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
 }
 
 Parameter* parse_parameter_list(TokenList* tokens, ObjectList* object_list, int* index, int max_parameters, enum TokenType Seperator, enum TokenType End, Parameter* parameters, int* parameter_count) {
+    Identifier ident_param_name;
+    Identifier ident_param_type;
+    ident_param_name.id = -1;
+    ident_param_type.id = -1;
     Token* param_name = NULL;
     Token* param_type = NULL;
     int expected = 1; // 1 for name, 2 for type, 3 for comma
@@ -149,8 +157,10 @@ Parameter* parse_parameter_list(TokenList* tokens, ObjectList* object_list, int*
                 exit(1);
             }
             expected = 1;
-            parameters[*parameter_count].name = param_name;
-            parameters[*parameter_count].type = param_type;
+            ident_param_name.name = param_name;
+            ident_param_type.name = param_type;
+            parameters[*parameter_count].name = ident_param_name;
+            parameters[*parameter_count].type = ident_param_type;
             (*parameter_count)++;
         } else {
             printf("Error: Invalid parameter declaration in line %d\n", get_token(tokens, *index)->line);
@@ -160,8 +170,10 @@ Parameter* parse_parameter_list(TokenList* tokens, ObjectList* object_list, int*
     } 
 
     if (expected == 3) {
-        parameters[*parameter_count].name = param_name;
-        parameters[*parameter_count].type = param_type;
+        ident_param_name.name = param_name;
+        ident_param_type.name = param_type;
+        parameters[*parameter_count].name = ident_param_name;
+        parameters[*parameter_count].type = ident_param_type;
         (*parameter_count)++;
     }
 
@@ -280,11 +292,14 @@ void parse_struct(TokenList* tokens, ObjectList* object_list, int* index, Struct
 
 void parse_function_call(TokenList* tokens, ObjectList* object_list, int* index, FunctionCall* func_call) {
     int size = 0;
-    Token** scope = malloc(sizeof(Token*) * 16); // max scope depth is 16 
+    Identifier* scope = malloc(sizeof(Identifier) * 16); // max scope depth is 16 
     
     while (get_token(tokens, *index)->type == TOKEN_IDENTIFIER) {
         Token* name = get_token(tokens, *index);
-        scope[size] = name;
+        Identifier ident;
+        ident.id = -1;
+        ident.name = name;
+        scope[size] = ident;
         if (size == 16) {
             printf("Error: Invalid function call, max scope depth is 16 in line %d\n", get_token(tokens, *index)->line);
             exit(1);
@@ -298,7 +313,7 @@ void parse_function_call(TokenList* tokens, ObjectList* object_list, int* index,
         exit(1);
     }
 
-    Token** scope_address = add_object(object_list, scope, sizeof(Token*) * size);
+    Identifier* scope_address = add_object(object_list, scope, sizeof(Identifier) * size);
 
     func_call->scope_size = size;
     func_call->scope = scope_address;
@@ -559,13 +574,16 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
     } else if (token->type == TOKEN_IDENTIFIER) {
         int size = 0;
         int current_index = *index;
-        Token** scope = malloc(sizeof(Token*) * 16); // max scope depth is 16
+        Identifier* scope = malloc(sizeof(Identifier) * 16); // max scope depth is 16
         while (get_token(tokens, *index)->type == TOKEN_IDENTIFIER) {
             if (size == 16) {
                 printf("Error: Invalid variable assignment, max scope depth is 16 in line %d\n", get_token(tokens, *index)->line);
                 exit(1);
             }
-            scope[size] = get_token(tokens, *index);
+            Identifier ident;
+            ident.id = -1;
+            ident.name = get_token(tokens, *index);
+            scope[size] = ident;
             (*index)++;
             size++;
         }
@@ -582,7 +600,7 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
         } else {
             ScopedIdentifier ident;
             ident.size = size;
-            ident.scope = add_object(object_list, scope, sizeof(Token*) * size);
+            ident.scope = add_object(object_list, scope, sizeof(Identifier) * size);
             node.type = NODE_SCOPED_IDENTIFIER;
             node.data = add_object(object_list, &ident, sizeof(ScopedIdentifier));
             if (scope != NULL) {
@@ -683,7 +701,7 @@ void debug_parser_node(Node* node, FILE* out) {
     else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scope = (ScopedIdentifier*)node->data;
         for (int i = 0; i < scope->size; i++) {
-            fprintf(out, "%s ", scope->scope[i]->value);
+            fprintf(out, "%s ", scope->scope[i].name->value);
         }
     }
     else if (node->type == NODE_VARIABLE_DECLARATION) {
@@ -698,7 +716,7 @@ void debug_parser_node(Node* node, FILE* out) {
     else if (node->type == NODE_VARIABLE_ASSIGNMENT) {
         VariableAssignment* var_assign = (VariableAssignment*)node->data;
         for (int i = 0; i < var_assign->identifier.size; i++) {
-            fprintf(out, "%s ", var_assign->identifier.scope[i]->value);
+            fprintf(out, "%s ", var_assign->identifier.scope[i].name->value);
         }
         fprintf(out, "= ");
         debug_parser_node(&var_assign->value, out);
@@ -714,7 +732,7 @@ void debug_parser_node(Node* node, FILE* out) {
             if (i > 0) {
                 fprintf(out, ", ");
             }
-            fprintf(out, "%s %s", func_decl->parameters[i].name->value, func_decl->parameters[i].type->value);
+            fprintf(out, "%s %s", func_decl->parameters[i].name.name->value, func_decl->parameters[i].type.name->value);
         }
         fprintf(out, ") %s\n", func_decl->return_type->value);
 
@@ -733,13 +751,13 @@ void debug_parser_node(Node* node, FILE* out) {
         StructDeclaration* struct_decl = (StructDeclaration*)node->data;
         fprintf(out, "struct %s\n", struct_decl->name->value);
         for (int i = 0; i < struct_decl->field_count; i++) {
-            fprintf(out, "    %s %s\n", struct_decl->fields[i].name->value, struct_decl->fields[i].type->value);
+            fprintf(out, "    %s %s\n", struct_decl->fields[i].name.name->value, struct_decl->fields[i].type.name->value);
         }
         fprintf(out, "end");
     } else if(node->type == NODE_FUNCTION_CALL) {
         FunctionCall* func_call = (FunctionCall*)node->data;
         for (int i = 0; i < func_call->scope_size; i++) {
-            fprintf(out, "%s", func_call->scope[i]->value);
+            fprintf(out, "%s", func_call->scope[i].name->value);
             if (i < func_call->scope_size - 1) {
                 fprintf(out, " ");
             }
