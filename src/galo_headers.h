@@ -79,6 +79,8 @@ enum TokenType {
     TOKEN_KEYWORD_ELIF,
     TOKEN_KEYWORD_ELSE,
     TOKEN_KEYWORD_RETURN,
+    TOKEN_KEYWORD_BREAK,
+    TOKEN_KEYWORD_CONTINUE,
     TOKEN_KEYWORD_WHILE,
     TOKEN_KEYWORD_NOT,
     TOKEN_OPERATOR_ASSIGN,
@@ -117,6 +119,8 @@ enum NodeType {
     NODE_WHILE_LOOP,
     NODE_IF_STATEMENT,
     NODE_RETURN_STATEMENT,
+    NODE_BREAK_STATEMENT,
+    NODE_CONTINUE_STATEMENT,
     NODE_OPERATION,
     NODE_SCOPED_IDENTIFIER,
     NODE_CONSTANT,
@@ -211,6 +215,7 @@ typedef struct IfStatement_t {
 
 typedef struct ReturnStatement_t {
     Node value;
+    int line;
 } ReturnStatement;
 
 typedef struct Operation_t {
@@ -302,6 +307,8 @@ typedef struct Validator_Object_t {
     int last_variable_id;
     int last_struct_id;
     int last_function_id;
+    bool is_inside_while_loop;
+    bool is_inside_function;
 } Validator_Object;
 
 Validator_Object create_validator_object();
@@ -348,6 +355,9 @@ typedef struct Interpreter_Object_t {
     // Runtime storage
     GaloObject* variables;
     int variable_count;
+    bool did_break;
+    bool did_continue;
+    bool did_return;
 
     // Scoping
     ScopeFrame* scope_stack;

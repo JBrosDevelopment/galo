@@ -3,3 +3,7 @@ bin/*
 *.exe
 *.o
 .vscode/*
+
+emit_validator.txt
+emit_ast.txt
+emit_tokens.txt

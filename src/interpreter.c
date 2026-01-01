@@ -176,12 +176,12 @@ static void scope_add_variable(Interpreter_Object* interp, int var_id) {
 }
 
 GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
-    if (node->type == NODE_STRUCT_DECLARATION || NODE_FUNCTION_DECLARATION) {
+    if (node->type == NODE_STRUCT_DECLARATION || node->type == NODE_FUNCTION_DECLARATION) {
         return void_object_value(); // handled by validator
     }
     else if (node->type == NODE_VARIABLE_DECLARATION) {
         VariableDeclaration* var_decl = (VariableDeclaration*)node->data;
-        
+
         GaloObject value = void_object_value();
         if (var_decl->value.type != NODE_EMPTY) {
             value = interpret_node(interp, &var_decl->value);
@@ -461,7 +461,95 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             free(lhs.data);
             return value_copy;
         }
+    } else if (node->type == NODE_IF_STATEMENT) {
+        IfStatement* if_stmt = (IfStatement*)node->data;
 
+        GaloObject condition = interpret_node(interp, &if_stmt->condition);
+        bool condition_value = *(bool*)condition.data;
+        free(condition.data);
+
+        NodeList* body_to_run = NULL;
+
+        if (condition_value) {
+            body_to_run = if_stmt->body;
+        } else if (if_stmt->elifs != NULL) {
+            for (int i = 0; i < if_stmt->elif_count; i++) {
+                ElifIfStatement elif_stmt = if_stmt->elifs[i];
+                GaloObject elif_condition = interpret_node(interp, &elif_stmt.condition);
+                bool elif_condition_value = *(bool*)elif_condition.data;
+                free(elif_condition.data);
+
+                if (elif_condition_value) {
+                    body_to_run = elif_stmt.body;
+                    break;
+                }
+            }
+        }
+        
+        if (body_to_run == NULL && if_stmt->else_body != NULL) {
+            body_to_run = if_stmt->else_body;
+        }
+
+        
+        if (body_to_run != NULL) {
+            push_scope(interp);
+            
+            for (int i = 0; i < body_to_run->size; i++) {
+                Node* node = get_node(body_to_run, i);
+                interpret_node(interp, node);
+            }
+            pop_scope(interp);
+        }
+
+
+        return void_object_value();
+    } else if (node->type == NODE_WHILE_LOOP) {
+        WhileLoop* while_loop = (WhileLoop*)node->data;
+    
+        push_scope(interp);
+
+        bool pre_did_break = interp->did_break;
+        bool pre_did_continue = interp->did_continue;
+    
+        while (1) {
+            GaloObject condition = interpret_node(interp, &while_loop->condition);
+
+            if (interp->did_continue) {
+                interp->did_continue = false;
+                continue;
+            }
+    
+            bool condition_value = *(bool*)condition.data;
+            free(condition.data);
+    
+            if (!condition_value) {
+                break;
+            }
+    
+            for (int i = 0; i < while_loop->body->size; i++) {
+                Node* body_node = get_node(while_loop->body, i);
+                interpret_node(interp, body_node);
+                if (interp->did_break || interp->did_continue) {
+                    break;
+                }
+            }
+            if (interp->did_break) {
+                interp->did_break = false;
+                break;
+            }
+        }
+
+        interp->did_break = pre_did_break;
+        interp->did_continue = pre_did_continue;
+    
+        pop_scope(interp);
+        return void_object_value();
+    } else if (node->type == NODE_BREAK_STATEMENT) {
+        interp->did_break = true;
+        return void_object_value();
+    } else if (node->type == NODE_CONTINUE_STATEMENT) {
+        interp->did_continue = true;
+        return void_object_value();
     } else {
         printf("TODO nodetype: %s\n", get_node_type_name(node->type));
         exit(1);

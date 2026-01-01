@@ -29,7 +29,36 @@ let e bool = (not a)
 
 let f byte = 9
 let g float = -99.1
-let h int = cast(int, f + g)
+#let h int = cast(int, f + g)
+
+if ((not a) or b)
+    let _A byte
+elif (not a)
+    let _A byte
+    let _B byte
+elif ((not c) or (x > 100))
+    let _A byte
+    let _B byte
+    let _C byte
+else
+    let _A byte
+    let _B byte
+    if false
+        let __A int
+    end
+    let _C byte
+    let _D byte
+end
+
+let index int = 1
+
+while (index < 10000) 
+    if (index > 100)
+        break
+    end
+    index = (index * 2)
+    let _inner float = (index / 3)
+end
 
 #print(x)
 

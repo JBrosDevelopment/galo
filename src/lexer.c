@@ -282,6 +282,10 @@ void lexer_add_word_or_number_token(const char* source_code, char* file_name, in
         token->type = TOKEN_KEYWORD_ELSE;
     } else if (strcmp(token_value, "return") == 0) {
         token->type = TOKEN_KEYWORD_RETURN;
+    } else if (strcmp(token_value, "break") == 0) {
+        token->type = TOKEN_KEYWORD_BREAK;
+    } else if (strcmp(token_value, "continue") == 0) {
+        token->type = TOKEN_KEYWORD_CONTINUE;
     } else if (strcmp(token_value, "while") == 0) {
         token->type = TOKEN_KEYWORD_WHILE;
     } else if (strcmp(token_value, "true") == 0) {
@@ -327,6 +331,8 @@ const char* get_token_type_name(enum TokenType type) {
         case TOKEN_KEYWORD_ELIF: return "TOKEN_KEYWORD_ELIF"; 
         case TOKEN_KEYWORD_ELSE: return "TOKEN_KEYWORD_ELSE"; 
         case TOKEN_KEYWORD_RETURN: return "TOKEN_KEYWORD_RETURN"; 
+        case TOKEN_KEYWORD_BREAK: return "TOKEN_KEYWORD_BREAK"; 
+        case TOKEN_KEYWORD_CONTINUE: return "TOKEN_KEYWORD_CONTINUE";
         case TOKEN_KEYWORD_WHILE: return "TOKEN_KEYWORD_WHILE"; 
         case TOKEN_KEYWORD_NOT: return "TOKEN_KEYWORD_NOT";
         case TOKEN_OPERATOR_ASSIGN: return "TOKEN_OPERATOR_ASSIGN"; 

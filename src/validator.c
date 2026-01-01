@@ -536,7 +536,10 @@ int validate_node(Node* node, Validator_Object* validator_object) {
             add_int(validator_object->active_variables, var.id);
         }
 
+        bool is_inside_function = validator_object->is_inside_function;
+        validator_object->is_inside_function = true;
         validator(func_decl->body, validator_object);
+        validator_object->is_inside_function = is_inside_function;
 
         free_int_list(validator_object->active_variables);
         validator_object->active_variables = saved;
@@ -545,7 +548,30 @@ int validate_node(Node* node, Validator_Object* validator_object) {
     }
     else if (node->type == NODE_RETURN_STATEMENT) {
         ReturnStatement* return_stmt = (ReturnStatement*)node->data;
+        if (!validator_object->is_inside_function) {
+            printf("ERROR: return statement outside of function in line %d\n", return_stmt->line);
+            exit(1);
+        }
+        if (return_stmt->value.type == NODE_EMPTY) {
+            return VOID_TYPE;
+        }
         return validate_node(&return_stmt->value, validator_object);
+    }
+    else if (node->type == NODE_BREAK_STATEMENT) {
+        if (!validator_object->is_inside_while_loop) {
+            Token* token = (Token*)node->data;
+            printf("ERROR: break statement outside of loop in line %d\n", token->line);
+            exit(1);
+        }
+        return VOID_TYPE;
+    }
+    else if (node->type == NODE_CONTINUE_STATEMENT) {
+        if (!validator_object->is_inside_while_loop) {
+            Token* token = (Token*)node->data;
+            printf("ERROR: break statement outside of loop in line %d\n", token->line);
+            exit(1);
+        }
+        return VOID_TYPE;
     }
     else if (node->type == NODE_STRUCT_DECLARATION) {
         StructDeclaration* struct_decl = (StructDeclaration*)node->data;
@@ -600,7 +626,10 @@ int validate_node(Node* node, Validator_Object* validator_object) {
             fprintf(stderr, "Expected condition type: `boolean` in line %d\n", while_loop->line);
             exit(1);
         }
+        bool last_is_while_loop = validator_object->is_inside_while_loop;
+        validator_object->is_inside_while_loop = true;
         validator(while_loop->body, validator_object);
+        validator_object->is_inside_while_loop = last_is_while_loop;
         return VOID_TYPE;
     }
     else {
@@ -619,6 +648,8 @@ Validator_Object create_validator_object() {
     validator_object.last_variable_id = 0;
     validator_object.last_struct_id = 0;
     validator_object.last_function_id = 0;
+    validator_object.is_inside_function = false;
+    validator_object.is_inside_while_loop = false;
     add_predefined_functions(&validator_object);
     return validator_object;
 }

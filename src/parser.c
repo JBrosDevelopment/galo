@@ -523,8 +523,19 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
             value.type = NODE_EMPTY;
         }
         return_stmt.value = value;
+        return_stmt.line = first_token->line;
         node->type = NODE_RETURN_STATEMENT;
         node->data = add_object(object_list, &return_stmt, sizeof(ReturnStatement));
+    }
+    else if (first_token->type == TOKEN_KEYWORD_BREAK) {
+        (*index)++;
+        node->type = NODE_BREAK_STATEMENT;
+        node->data = get_token(tokens, *index);
+    }
+    else if (first_token->type == TOKEN_KEYWORD_CONTINUE) {
+        (*index)++;
+        node->type = NODE_CONTINUE_STATEMENT;
+        node->data = get_token(tokens, *index);
     }
     else if (first_token->type == TOKEN_KEYWORD_IF) {
         IfStatement if_stmt;
@@ -677,6 +688,8 @@ const char* get_node_type_name(enum NodeType type) {
         case NODE_WHILE_LOOP: return "NODE_WHILE_LOOP";
         case NODE_IF_STATEMENT: return "NODE_IF_STATEMENT";
         case NODE_RETURN_STATEMENT: return "NODE_RETURN_STATEMENT";
+        case NODE_BREAK_STATEMENT: return "NODE_BREAK_STATEMENT";
+        case NODE_CONTINUE_STATEMENT: return "NODE_CONTINUE_STATEMENT";
         case NODE_OPERATION: return "NODE_OPERATION";
         case NODE_SCOPED_IDENTIFIER: return "NODE_SCOPED_IDENTIFIER";
         case NODE_CONSTANT: return "NODE_CONSTANT";
