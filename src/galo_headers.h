@@ -189,6 +189,7 @@ typedef struct FunctionCall_t {
     int scope_size;
     Node* arguments;
     int argument_count;
+    int id;
 } FunctionCall;
 
 typedef struct WhileLoop_t {
@@ -381,6 +382,9 @@ typedef struct Interpreter_Object_t {
 
 Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* validator_object);
 void free_interpreter_object(Interpreter_Object* interpreter_object);
+GaloObject predefined_function_call(Interpreter_Object* interp, PredefinedFunction* predefined_function, int argument_count, GaloObject* arguments);
+GaloObject function_call(Interpreter_Object* interp, FunctionDeclaration* function, int argument_count, GaloObject* arguments);
+void add_builtin_function(Interpreter_Object* interp, char* name, GaloObject (*function)(Interpreter_Object* interp, GaloObject* args, int arg_count));
 
 /////////////////////////////////////////////////////////////////////
 // FUNCTIONS AND THEIR DEBUGGER FUNCTIONS

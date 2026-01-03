@@ -175,6 +175,38 @@ static void scope_add_variable(Interpreter_Object* interp, int var_id) {
     scope->variable_ids[scope->count++] = var_id;
 }
 
+void resolve_escape_characters(char *str) {
+    char *src = str;
+    char *dst = str;
+
+    while (*src) {
+        if (*src == '\\') {
+            src++;
+            switch (*src) {
+                case 'n':  *dst++ = '\n'; break;
+                case 't':  *dst++ = '\t'; break;
+                case 'r':  *dst++ = '\r'; break;
+                case '0':  *dst++ = '\0'; break;
+                case '\\': *dst++ = '\\'; break;
+                case '"':  *dst++ = '"';  break;
+                case '\'': *dst++ = '\''; break;
+                default:
+                    *dst++ = '\\';
+                    *dst++ = *src;
+                    break;
+            }
+
+            if (*src) {
+                src++;
+            }
+        } else {
+            *dst++ = *src++;
+        }
+    }
+
+    *dst = '\0';
+}
+
 GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
     if (node->type == NODE_STRUCT_DECLARATION || node->type == NODE_FUNCTION_DECLARATION) {
         return void_object_value(); // handled by validator
@@ -294,7 +326,8 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             *(float*)object.data = value;
             return object;
         } else if (token->type == TOKEN_CONSTANT_STRING) {
-            const char* value = token->value;
+            char* value = (char*)token->value;
+            resolve_escape_characters(value);
             object.type_id = STRING_TYPE;
             object.size = strlen(value) + 1;
             object.data = malloc(object.size);
@@ -550,13 +583,209 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
     } else if (node->type == NODE_CONTINUE_STATEMENT) {
         interp->did_continue = true;
         return void_object_value();
+    } else if (node->type == NODE_RETURN_STATEMENT) {
+        interp->did_return = true;
+        ReturnStatement* return_stmt = (ReturnStatement*)node->data;
+        if (return_stmt->value.type != NODE_EMPTY) {
+            GaloObject value = interpret_node(interp, &return_stmt->value);
+            return value;
+        }
+        return void_object_value();
+    } else if (node->type == NODE_FUNCTION_CALL) {
+        FunctionCall* func_call = (FunctionCall*)node->data;
+
+        int argument_count = func_call->argument_count;
+        GaloObject* arguments = calloc(argument_count, sizeof(GaloObject));
+
+        for (int i = 0; i < argument_count; i++) {
+            Node arg = func_call->arguments[i];
+            arguments[i] = interpret_node(interp, &arg);
+        }
+
+        GaloObject return_value = void_object_value();
+
+        if (func_call->id < interp->validator_object->predefined_functions->size) {
+            // predefined function call
+            PredefinedFunction* predefined_function = (PredefinedFunction*)get_object(interp->validator_object->predefined_functions, func_call->id);
+            return_value = predefined_function_call(interp, predefined_function, argument_count, arguments);
+        } else {
+            // user defined function call
+            FunctionDeclaration* func = (FunctionDeclaration*)get_object(interp->validator_object->functions, func_call->id);
+            return_value = function_call(interp, func, argument_count, arguments);
+        }
+
+        for (int i = 0; i < argument_count; i++) {
+            GaloObject arg = arguments[i];
+            free(arg.data);
+        }
+        free(arguments);
+
+        return return_value;
     } else {
-        printf("TODO nodetype: %s\n", get_node_type_name(node->type));
+        printf("ERROR: Unknown nodetype: %s\n", get_node_type_name(node->type));
         exit(1);
     }
 
     return void_object_value();
 }
+
+GaloObject predefined_function_call(Interpreter_Object* interp, PredefinedFunction* predefined_function, int argument_count, GaloObject* arguments) {
+    int id = predefined_function->id;
+    GaloObject (*function)(Interpreter_Object* interp, GaloObject* args, int arg_count) = interp->builtins[id];
+    return function(interp, arguments, argument_count);
+}
+GaloObject function_call(Interpreter_Object* interp, FunctionDeclaration* function, int argument_count, GaloObject* arguments) {
+    printf("TODO: function_call\n");
+    exit(1);
+}
+void add_builtin_function(Interpreter_Object* interp, char* name, GaloObject (*function)(Interpreter_Object* interp, GaloObject* args, int arg_count)) {
+    PredefinedFunction* pf = NULL;
+    for (int i = 0; i < interp->validator_object->predefined_functions->size; i++) {
+        PredefinedFunction* index = (PredefinedFunction*)get_object(interp->validator_object->predefined_functions, i);
+        if (strcmp(index->name, name) == 0) {
+            pf = index;
+            break;
+        }
+    }
+
+    if (pf == NULL) {
+        printf("DEVELOPER ERROR: Function %s not found in predefined functions from the validator object\n", name);
+        exit(1);
+    }
+
+    interp->builtins[pf->id] = function;
+}
+
+static void append_to_string(char** buffer, size_t* capacity, size_t* length, const char* text) {
+    size_t add = strlen(text);
+
+    if (*length + add + 1 > *capacity) {
+        *capacity = (*capacity + add + 1) * 2;
+        char* new_buf = realloc(*buffer, *capacity);
+        if (!new_buf) {
+            printf("Out of memory\n");
+            exit(1);
+        }
+        *buffer = new_buf;
+    }
+
+    memcpy(*buffer + *length, text, add);
+    *length += add;
+    (*buffer)[*length] = '\0';
+}
+
+GaloObject string_object_value(char* string) {
+    GaloObject object;
+    object.type_id = STRING_TYPE;
+    object.size = strlen(string) + 1;
+    object.data = string;
+    return object;
+}
+
+GaloObject builtin_to_string(Interpreter_Object* interp, GaloObject* args, int arg_count) {
+    if (arg_count != 1) {
+        printf("ERROR: to_string() takes 1 argument\n");
+        exit(1);
+    }
+    GaloObject object = args[0];
+    if (object.type_id == STRING_TYPE) {
+        char* string = strdup((char*)object.data);
+        GaloObject new_object = string_object_value(string);
+        return new_object;
+    } else if (object.type_id == INT_TYPE) {
+        char* string = calloc(32, sizeof(char));
+        sprintf(string, "%d", *(int*)object.data);
+        GaloObject new_object = string_object_value(string);
+        return new_object;
+    } else if (object.type_id == FLOAT_TYPE) {
+        char* string = calloc(32, sizeof(char));
+        sprintf(string, "%f", *(float*)object.data);
+        GaloObject new_object = string_object_value(string);
+        return new_object;
+    } else if (object.type_id == BOOLEAN_TYPE) {
+        char* string = calloc(6, sizeof(char));
+        if (*(bool*)object.data) {
+            sprintf(string, "true");
+        } else {
+            sprintf(string, "false");
+        }
+        GaloObject new_object = string_object_value(string);
+        return new_object;
+    } else if (object.type_id == BYTE_TYPE) {
+        char* string = calloc(8, sizeof(char));
+        sprintf(string, "%d", *(unsigned char*)object.data);
+        GaloObject new_object = string_object_value(string);
+        return new_object;
+    } else if (object.type_id == LIST_TYPE) {
+        size_t cap = 64;
+        size_t len = 0;
+        char* string = malloc(cap);
+        string[0] = '\0';
+    
+        append_to_string(&string, &cap, &len, "[");
+    
+        ObjectList* list = (ObjectList*)object.data;
+    
+        for (int i = 0; i < list->size; i++) {
+            GaloObject* item = get_object(list, i);
+            GaloObject item_str = builtin_to_string(interp, item, 1);
+    
+            append_to_string(&string, &cap, &len, (char*)item_str.data);
+    
+            if (i != list->size - 1) {
+                append_to_string(&string, &cap, &len, ", ");
+            }
+    
+            free(item_str.data);
+        }
+    
+        append_to_string(&string, &cap, &len, "]");
+    
+        return string_object_value(string);
+    } else {
+        size_t cap = 64;
+        size_t len = 0;
+        char* string = malloc(cap);
+        string[0] = '\0';
+    
+        append_to_string(&string, &cap, &len, "{");
+    
+        StructDeclaration* decl = get_struct_from_id(object.type_id, interp->validator_object);
+    
+        for (int i = 0; i < decl->field_count; i++) {
+            GaloObject field = get_field_in_struct(interp, object, object.type_id, decl->fields[i].name.name);
+    
+            GaloObject field_str = builtin_to_string(interp, &field, 1);
+    
+            append_to_string(&string, &cap, &len, decl->fields[i].name.name->value);
+            append_to_string(&string, &cap, &len, " = ");
+            append_to_string(&string, &cap, &len, (char*)field_str.data);
+    
+            if (i != decl->field_count - 1) {
+                append_to_string(&string, &cap, &len, ", ");
+            }
+    
+            free(field_str.data);
+        }
+    
+        append_to_string(&string, &cap, &len, "}");
+    
+        return string_object_value(string);
+    }    
+}
+
+GaloObject builtin_print(Interpreter_Object* interp, GaloObject* args, int arg_count) {
+    for (int i = 0; i < arg_count; i++) {
+        GaloObject arg = args[i];
+        GaloObject arg_to_string = builtin_to_string(interp, &arg, 1);
+        char* string = (char*)arg_to_string.data;
+        printf("%s", string);
+        free(arg_to_string.data);
+    }
+
+    return void_object_value();
+}
+
 
 Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* validator_object) {
     Interpreter_Object* interp = calloc(1, sizeof(Interpreter_Object));
@@ -572,6 +801,12 @@ Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* v
 
     interp->call_capacity = 64;
     interp->call_stack = calloc(interp->call_capacity, sizeof(CallFrame));
+
+    interp->builtin_count = validator_object->predefined_functions->size;
+    interp->builtins = calloc(interp->builtin_count, sizeof(GaloObject (*)(Interpreter_Object* interp, GaloObject* args, int arg_count)));
+
+    add_builtin_function(interp, "to_string", builtin_to_string);
+    add_builtin_function(interp, "print", builtin_print);
 
     return interp;
 }

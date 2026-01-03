@@ -336,7 +336,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
         FunctionCall* func_call = (FunctionCall*)node->data;
         ScopedIdentifier* scoped_func = (ScopedIdentifier*)node->data;
         
-        int func_type_id = NO_EXPECTED_NODE;
+        int func_id = NO_EXPECTED_NODE;
         for (int i = 0; i < validator_object->functions->size; i++) {
             FunctionDeclaration* index_func_decl = (FunctionDeclaration*)validator_object->functions->objects[i];
             if (strcmp(scoped_func->scope[scoped_func->size - 1].name->value, index_func_decl->name->value) == 0) {
@@ -352,7 +352,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                     if (index_func_decl->struct_implementation == NULL && strcmp(index_func_decl->struct_implementation->value, struct_decl->name->value) != 0) {
                         continue;
                     }
-                    func_type_id = index_func_decl->id;
+                    func_id = index_func_decl->id;
                     scoped_func->scope[scoped_func->size - 1].id = index_func_decl->id;
                     break;
                 }
@@ -419,10 +419,10 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                         continue;
                     }
 
-                    func_type_id = index_func_decl->id;
+                    func_id = index_func_decl->id;
                     break;
                 } else {
-                    func_type_id = index_func_decl->id;
+                    func_id = index_func_decl->id;
                     break;
                 }
             }
@@ -430,14 +430,14 @@ int validate_node(Node* node, Validator_Object* validator_object) {
         PredefinedFunction* predefined_function = NULL;
         bool is_predefined = function_is_predefined(validator_object, scoped_func, &predefined_function);
 
-        if ((func_type_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(func_type_id)) && !is_predefined) {
+        if ((func_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(func_id)) && !is_predefined) {
             fprintf(stderr, "function doesn't exist: `%s` in line %d\n", scoped_func->scope[scoped_func->size - 1].name->value, scoped_func->scope[0].name->line);
             exit(1);
         }
 
-
         if (is_predefined) {
-            func_type_id = predefined_function->id;
+            func_id = predefined_function->id;
+            func_call->id = func_id;
             if (!predefined_function->infinite_parameters) {
                 int i;
                 for (i = 0; i < func_call->argument_count; i++) {
@@ -463,12 +463,22 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                     fprintf(stderr, "too few arguments in function call `%s` in line %d\n", func_call->scope[func_call->scope_size - 1].name->value, func_call->scope[0].name->line);
                     exit(1);
                 }
+            } else {
+                for (int i = 0; i < func_call->argument_count; i++) {
+                    Node arg = func_call->arguments[i];
+                    int arg_type_id = validate_node(&arg, validator_object);
+                    if (arg_type_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(arg_type_id)) {
+                        fprintf(stderr, "Invalid type in function call `%s` in line %d\n", func_call->scope[func_call->scope_size - 1].name->value, func_call->scope[0].name->line);
+                        exit(1);
+                    }
+                }
             }
 
             return predefined_function->return_id;
         }
         else {
-            FunctionDeclaration* func_decl = get_function_from_id(func_type_id, validator_object);
+            func_call->id = func_id;
+            FunctionDeclaration* func_decl = get_function_from_id(func_id, validator_object);
             if (func_decl == NULL) {
                 fprintf(stderr, "function doesn't exist: `%s` in line %d\n", scoped_func->scope[scoped_func->size - 1].name->value, scoped_func->scope[0].name->line);
                 exit(1);
@@ -1026,11 +1036,22 @@ void add_predefined_functions(Validator_Object* validator_object) {
     cast_func.parameter_count = 2;
     cast_func.parameter_ids = malloc(2 * sizeof(int));
     cast_func.parameter_ids[0] = TYPE_AS_TYPE;
-    cast_func.parameter_ids[1] = INT_TYPE;
+    cast_func.parameter_ids[1] = ANY_TYPE;
     cast_func.infinite_parameters = false;
     cast_func.return_id = ANY_TYPE;
     cast_func.parent_id = -1;
     add_object(validator_object->predefined_functions, &cast_func, sizeof(PredefinedFunction));
+
+    PredefinedFunction to_string_func;
+    to_string_func.name = "to_string";
+    to_string_func.id = validator_object->last_function_id++;
+    to_string_func.parameter_count = 1;
+    to_string_func.parameter_ids = malloc(1 * sizeof(int));
+    to_string_func.parameter_ids[0] = ANY_TYPE;
+    to_string_func.infinite_parameters = false;
+    to_string_func.return_id = STRING_TYPE;
+    to_string_func.parent_id = -1;
+    add_object(validator_object->predefined_functions, &to_string_func, sizeof(PredefinedFunction));
 }
 
 void emit_validator(Validator_Object* validator_object, char* output_file) {

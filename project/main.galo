@@ -1,3 +1,20 @@
+struct Color 
+    r byte
+    g byte
+    b byte
+end
+let c Color
+c r = 0
+c g = 0
+c b = 0
+let i int = 0
+while (i < 100)
+    i = (i + 1)
+    c r = i
+    print(c, "!\n")
+end
+
+~
 struct P_empty
     q float
     z bool
