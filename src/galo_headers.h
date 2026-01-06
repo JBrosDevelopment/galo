@@ -359,6 +359,8 @@ typedef struct Interpreter_Object_t {
     bool did_break;
     bool did_continue;
     bool did_return;
+    bool did_exit;
+    int exit_code;
 
     // Scoping
     ScopeFrame* scope_stack;

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 // forward declarations
 void ensure_scope_capacity(Interpreter_Object* interp); 
@@ -23,6 +24,10 @@ void interpret(Interpreter_Object* interp, int input_argc, char** input_argv) {
     for (int i = 0; i < interp->ast->size; i++) {
         Node* node = get_node(interp->ast, i);
         interpret_node(interp, node);
+        
+        if (interp->did_exit) {
+            break;
+        }
     }
     printf("finished interpreter\n");
     print_out_variable_values(interp);
@@ -207,7 +212,63 @@ void resolve_escape_characters(char *str) {
     *dst = '\0';
 }
 
+GaloObject interpret_node_as_type(Interpreter_Object* interp, Node* node) {
+    GaloObject type_object;
+    type_object.type_id = TYPE_AS_TYPE;
+    type_object.size = sizeof(int);
+    type_object.data = malloc(sizeof(int));
+    
+    ScopedIdentifier* identifier = (ScopedIdentifier*)node->data;
+    if (identifier->size != 1) {
+        printf("Runtime Error: Invalid type identifier\n"); // shouldn't happen
+        exit(1);
+    }
+
+    char* type_name = (char*)identifier->scope[0].name->value;
+    int type_id = NO_EXPECTED_NODE;
+
+    if (strcmp(type_name, "int") == 0) {
+        type_id = INT_TYPE;
+    } else if (strcmp(type_name, "float") == 0) {
+        type_id = FLOAT_TYPE;
+    } else if (strcmp(type_name, "byte") == 0) {
+        type_id = BYTE_TYPE;
+    } else if (strcmp(type_name, "string") == 0) {
+        type_id = STRING_TYPE;
+    } else if (strcmp(type_name, "bool") == 0) {
+        type_id = BOOLEAN_TYPE;
+    } else if (strcmp(type_name, "void") == 0) {
+        type_id = VOID_TYPE;
+    } else if (strcmp(type_name, "list") == 0) {
+        type_id = LIST_TYPE;
+    } else if (strcmp(type_name, "any") == 0) {
+        type_id = ANY_TYPE;
+    } else if (strcmp(type_name, "type") == 0) {
+        type_id = TYPE_AS_TYPE;
+    } else {
+        for (int i = 0; i < interp->validator_object->structs->size; i++) {
+            StructDeclaration* struct_decl = (StructDeclaration*)get_object(interp->validator_object->structs, i);
+            if (strcmp(struct_decl->name->value, type_name) == 0) {
+                type_id = struct_decl->id;
+                break;
+            }
+        }
+    }
+
+    if (type_id == NO_EXPECTED_NODE) {
+        printf("Error: type name %s not found\n", type_name);
+        exit(1);
+    }
+
+    *(int*)type_object.data = type_id;
+
+    return type_object;
+}
+
 GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
+    if (interp->did_exit) { // scope back out if exit was called
+        return void_object_value();
+    }
     if (node->type == NODE_STRUCT_DECLARATION || node->type == NODE_FUNCTION_DECLARATION) {
         return void_object_value(); // handled by validator
     }
@@ -244,7 +305,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         set_variable_value(interp, var_decl->id, value);
         
         scope_add_variable(interp, var_decl->id);
-
+        
         return value;
     } else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scoped_identifier = (ScopedIdentifier*)node->data;
@@ -386,7 +447,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             } else if (lhs.type_id == BYTE_TYPE) {
                 left_value = *(unsigned char*)lhs.data;
             } else {
-                printf("Type not supported for arithmetic operation: %d\n", lhs.type_id);
+                printf("Type not supported for arithmetic operation, type id: %d\n", lhs.type_id);
                 exit(1);
             }
             if (rhs.type_id == FLOAT_TYPE) {
@@ -396,7 +457,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             } else if (rhs.type_id == BYTE_TYPE) {
                 right_value = *(unsigned char*)rhs.data;
             } else {
-                printf("Type not supported for arithmetic operation: %d\n", rhs.type_id);
+                printf("Type not supported for arithmetic operation, type id: %d\n", rhs.type_id);
                 exit(1);
             }
 
@@ -530,6 +591,10 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             for (int i = 0; i < body_to_run->size; i++) {
                 Node* node = get_node(body_to_run, i);
                 interpret_node(interp, node);
+
+                if (interp->did_exit) {
+                    break;
+                }
             }
             pop_scope(interp);
         }
@@ -562,11 +627,11 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             for (int i = 0; i < while_loop->body->size; i++) {
                 Node* body_node = get_node(while_loop->body, i);
                 interpret_node(interp, body_node);
-                if (interp->did_break || interp->did_continue) {
+                if (interp->did_break || interp->did_continue || interp->did_exit) {
                     break;
                 }
             }
-            if (interp->did_break) {
+            if (interp->did_break || interp->did_exit) {
                 interp->did_break = false;
                 break;
             }
@@ -597,16 +662,36 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         int argument_count = func_call->argument_count;
         GaloObject* arguments = calloc(argument_count, sizeof(GaloObject));
 
+        bool is_predefined_function = func_call->id < interp->validator_object->predefined_functions->size;
+        PredefinedFunction* predefined_function = NULL;
+        if (is_predefined_function) {
+            predefined_function = (PredefinedFunction*)get_object(interp->validator_object->predefined_functions, func_call->id);
+        }
+
         for (int i = 0; i < argument_count; i++) {
             Node arg = func_call->arguments[i];
-            arguments[i] = interpret_node(interp, &arg);
+            
+            bool argument_is_type = false;
+
+            if (is_predefined_function && predefined_function->parameter_count != 0) {
+                if (predefined_function->parameter_count >= i && predefined_function->parameter_ids[i] == TYPE_AS_TYPE) {
+                    argument_is_type = true;
+                }
+            }
+
+            if (argument_is_type) {
+                // argument is a type
+                arguments[i] = interpret_node_as_type(interp, &arg);
+            } else {
+                // argument is a value
+                arguments[i] = interpret_node(interp, &arg);
+            }
         }
 
         GaloObject return_value = void_object_value();
 
-        if (func_call->id < interp->validator_object->predefined_functions->size) {
+        if (is_predefined_function) {
             // predefined function call
-            PredefinedFunction* predefined_function = (PredefinedFunction*)get_object(interp->validator_object->predefined_functions, func_call->id);
             return_value = predefined_function_call(interp, predefined_function, argument_count, arguments);
         } else {
             // user defined function call
@@ -682,11 +767,16 @@ GaloObject string_object_value(char* string) {
     return object;
 }
 
+void runtime_error(Interpreter_Object* interp, const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+    printf("\n");
+    interp->did_exit = true;
+}
+
 GaloObject builtin_to_string(Interpreter_Object* interp, GaloObject* args, int arg_count) {
-    if (arg_count != 1) {
-        printf("ERROR: to_string() takes 1 argument\n");
-        exit(1);
-    }
     GaloObject object = args[0];
     if (object.type_id == STRING_TYPE) {
         char* string = strdup((char*)object.data);
@@ -786,6 +876,202 @@ GaloObject builtin_print(Interpreter_Object* interp, GaloObject* args, int arg_c
     return void_object_value();
 }
 
+GaloObject builtin_exit(Interpreter_Object* interp, GaloObject* args, int arg_count) {
+    int exit_code = *(int*)args[0].data;
+    interp->did_exit = true;
+    interp->exit_code = exit_code;
+    return void_object_value();
+}
+
+GaloObject builtin_input(Interpreter_Object* interp, GaloObject* args, int arg_count) {
+    size_t capacity = 64;
+    size_t length = 0;
+    char* buffer = malloc(capacity);
+
+    if (!buffer) {
+        perror("malloc");
+        exit(1);
+    }
+
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {
+        if (length + 1 >= capacity) {
+            capacity *= 2;
+            buffer = realloc(buffer, capacity);
+            if (!buffer) {
+                perror("realloc");
+                exit(1);
+            }
+        }
+        buffer[length++] = (char)c;
+    }
+
+    buffer[length] = '\0';
+
+    GaloObject input_object = string_object_value(buffer);
+    return input_object;
+}
+
+GaloObject builtin_clear(Interpreter_Object* interp, GaloObject* args, int arg_count) {
+    system("clear");
+    return void_object_value();
+}
+
+GaloObject builtin_cast(Interpreter_Object* interp, GaloObject* args, int arg_count) {    
+    int target_type = *(int*)args[0].data;
+    GaloObject src = args[1];
+
+    if (target_type == src.type_id) {
+        GaloObject copy;
+        copy.type_id = src.type_id;
+        copy.size = src.size;
+        copy.data = malloc(src.size);
+        memcpy(copy.data, src.data, src.size);
+        return copy;
+    }
+
+    GaloObject result;
+    result.type_id = target_type;
+
+    switch (target_type) {
+
+    case INT_TYPE: {
+        int value;
+        char* end;
+
+        switch (src.type_id) {
+        case FLOAT_TYPE:
+            value = (int)(*(float*)src.data);
+            break;
+        case BYTE_TYPE:
+            value = (int)(*(unsigned char*)src.data);
+            break;
+        case BOOLEAN_TYPE:
+            value = *(bool*)src.data ? 1 : 0;
+            break;
+        case STRING_TYPE:
+            value = (int)strtol((char*)src.data, &end, 10);
+            if (*end != '\0') {
+                runtime_error(interp, "Invalid int cast from string: '%s'", (char*)src.data);
+                return void_object_value();
+            }
+            break;
+        default:
+            runtime_error(interp, "Cannot cast type %d to int", src.type_id);
+            return void_object_value();
+        }
+
+        result.size = sizeof(int);
+        result.data = malloc(sizeof(int));
+        *(int*)result.data = value;
+        return result;
+    }
+
+    case FLOAT_TYPE: {
+        float value;
+        char* end;
+
+        switch (src.type_id) {
+        case INT_TYPE:
+            value = (float)(*(int*)src.data);
+            break;
+        case BYTE_TYPE:
+            value = (float)(*(unsigned char*)src.data);
+            break;
+        case BOOLEAN_TYPE:
+            value = *(bool*)src.data ? 1.0f : 0.0f;
+            break;
+        case STRING_TYPE:
+            value = strtof((char*)src.data, &end);
+            if (*end != '\0') {
+                runtime_error(interp, "Invalid float cast from string: '%s'", (char*)src.data);
+                return void_object_value();
+            }
+            break;
+        default:
+            runtime_error(interp, "Cannot cast type %d to float", src.type_id);
+            return void_object_value();
+        }
+
+        result.size = sizeof(float);
+        result.data = malloc(sizeof(float));
+        *(float*)result.data = value;
+        return result;
+    }
+
+    case BYTE_TYPE: {
+        unsigned char value;
+
+        switch (src.type_id) {
+        case INT_TYPE:
+            value = (unsigned char)(*(int*)src.data);
+            break;
+        case FLOAT_TYPE:
+            value = (unsigned char)(*(float*)src.data);
+            break;
+        case BOOLEAN_TYPE:
+            value = *(bool*)src.data ? 1 : 0;
+            break;
+        case STRING_TYPE: {
+            char* end;
+            long tmp = strtol((char*)src.data, &end, 10);
+            if (*end != '\0' || tmp < 0 || tmp > 255) {
+                runtime_error(interp, "Invalid byte cast from string: '%s'", (char*)src.data);
+                return void_object_value();
+            }
+            value = (unsigned char)tmp;
+            break;
+        }
+        default:
+            runtime_error(interp, "Cannot cast type %d to byte", src.type_id);
+            return void_object_value();
+        }
+
+        result.size = sizeof(unsigned char);
+        result.data = malloc(sizeof(unsigned char));
+        *(unsigned char*)result.data = value;
+        return result;
+    }
+
+    case BOOLEAN_TYPE: {
+        bool value;
+
+        switch (src.type_id) {
+        case INT_TYPE:
+            value = (*(int*)src.data) != 0;
+            break;
+        case FLOAT_TYPE:
+            value = (*(float*)src.data) != 0.0f;
+            break;
+        case BYTE_TYPE:
+            value = (*(unsigned char*)src.data) != 0;
+            break;
+        case STRING_TYPE: {
+            char* s = (char*)src.data;
+            value = !(s[0] == '\0' ||
+                      strcmp(s, "0") == 0 ||
+                      strcmp(s, "false") == 0);
+            break;
+        }
+        default:
+            runtime_error(interp, "Cannot cast type %d to bool", src.type_id);
+            return void_object_value();
+        }
+
+        result.size = sizeof(bool);
+        result.data = malloc(sizeof(bool));
+        *(bool*)result.data = value;
+        return result;
+    }
+
+    case STRING_TYPE:
+        return builtin_to_string(interp, &args[1], 1);
+
+    default:
+        runtime_error(interp, "Invalid cast target type id: %d", target_type);
+        return void_object_value();
+    }
+}
 
 Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* validator_object) {
     Interpreter_Object* interp = calloc(1, sizeof(Interpreter_Object));
@@ -807,6 +1093,10 @@ Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* v
 
     add_builtin_function(interp, "to_string", builtin_to_string);
     add_builtin_function(interp, "print", builtin_print);
+    add_builtin_function(interp, "exit", builtin_exit);
+    add_builtin_function(interp, "input", builtin_input);
+    add_builtin_function(interp, "clear", builtin_clear);
+    add_builtin_function(interp, "cast", builtin_cast);
 
     return interp;
 }

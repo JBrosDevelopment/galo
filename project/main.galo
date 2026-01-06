@@ -1,83 +1,6 @@
-struct Color 
-    r byte
-    g byte
-    b byte
-end
-let c Color
-c r = 0
-c g = 0
-c b = 0
-let i int = 0
-while (i < 100)
-    i = (i + 1)
-    c r = i
-    print(c, "!\n")
-end
-
-~
-struct P_empty
-    q float
-    z bool
-end
-
-struct Point
-    x int
-    y int
-    po P_empty
-    gg byte
-end
-
-let p Point
-p x = 99
-p y = 100
-p po q = 101
-p po z = true
-p gg = 11119
-
-let x int = 20
-let y int = x
-x = (x + 12)
-
-let a bool = true
-let b bool = false
-let c bool = (a or false)
-let d bool = ((a or b) and c)
-let e bool = (not a)
-
-let f byte = 9
-let g float = -99.1
-#let h int = cast(int, f + g)
-
-if ((not a) or b)
-    let _A byte
-elif (not a)
-    let _A byte
-    let _B byte
-elif ((not c) or (x > 100))
-    let _A byte
-    let _B byte
-    let _C byte
-else
-    let _A byte
-    let _B byte
-    if false
-        let __A int
-    end
-    let _C byte
-    let _D byte
-end
-
-let index int = 1
-
-while (index < 10000) 
-    if (index > 100)
-        break
-    end
-    index = (index * 2)
-    let _inner float = (index / 3)
-end
-
-#print(x)
+let x string = cast(string, true)
+let y int = cast(int, x)
+print("x: ", x, ", y: ", y, "\n")
 
 
 ##!galo interpret project/main.galo -- 1 5 9 3 -5 4 -99 123 
@@ -88,7 +11,7 @@ end
 #    let i int = 0
 #    while (list length(args) > i)
 #        let arg string = list get(args, i)
-#        let val int = int convert(arg)
+#        let val int = cast(int, arg)
 #        if (val == -6)
 #            print("INVALID ARGUMENT:", arg, "\n")
 #            return 1
@@ -98,3 +21,9 @@ end
 #    end
 #    print("args total up to: ", x, "\n")
 #end
+
+
+#TODO
+# macro_if 
+# define
+# try catch blocks

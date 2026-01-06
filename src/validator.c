@@ -447,11 +447,22 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                     }
                     int parameter_type_id = predefined_function->parameter_ids[i];
                     if (parameter_type_id == TYPE_AS_TYPE) {
-                        int type_id = get_id_from_name((Token*)func_call->arguments[i].data, validator_object);
+                        if (func_call->arguments[i].type != NODE_SCOPED_IDENTIFIER) {
+                            fprintf(stderr, "Invalid type in function call `%s` in line %d\n", func_call->scope[func_call->scope_size - 1].name->value, func_call->scope[0].name->line);
+                            exit(1);
+                        }
+                        ScopedIdentifier* arg_data = (ScopedIdentifier*)func_call->arguments[i].data;
+                        if (arg_data->size != 1) {
+                            fprintf(stderr, "Invalid type in function call `%s` in line %d\n", func_call->scope[func_call->scope_size - 1].name->value, func_call->scope[0].name->line);
+                            exit(1);
+                        }
+                        Token* type_token = arg_data->scope[0].name;
+                        int type_id = get_id_from_name(type_token, validator_object);
                         if (type_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(type_id)) {
                             fprintf(stderr, "Invalid type in function call `%s` in line %d\n", func_call->scope[func_call->scope_size - 1].name->value, func_call->scope[0].name->line);
                             exit(1);
                         }
+                        continue;
                     }
 
                     Node arg = func_call->arguments[i];
@@ -759,8 +770,9 @@ void add_predefined_functions(Validator_Object* validator_object) {
     PredefinedFunction exit_func;
     exit_func.name = "exit";
     exit_func.id = validator_object->last_function_id++;
-    exit_func.parameter_count = 0;
-    exit_func.parameter_ids = NULL;
+    exit_func.parameter_count = 1;
+    exit_func.parameter_ids = malloc(1 * sizeof(int));
+    exit_func.parameter_ids[0] = INT_TYPE;
     exit_func.infinite_parameters = false;
     exit_func.return_id = VOID_TYPE;
     exit_func.parent_id = -1;
@@ -785,6 +797,29 @@ void add_predefined_functions(Validator_Object* validator_object) {
     clear_func.return_id = VOID_TYPE;
     clear_func.parent_id = -1;
     add_object(validator_object->predefined_functions, &clear_func, sizeof(PredefinedFunction));
+
+    PredefinedFunction cast_func;
+    cast_func.name = "cast";
+    cast_func.id = validator_object->last_function_id++;
+    cast_func.parameter_count = 2;
+    cast_func.parameter_ids = malloc(2 * sizeof(int));
+    cast_func.parameter_ids[0] = TYPE_AS_TYPE;
+    cast_func.parameter_ids[1] = ANY_TYPE;
+    cast_func.infinite_parameters = false;
+    cast_func.return_id = ANY_TYPE;
+    cast_func.parent_id = -1;
+    add_object(validator_object->predefined_functions, &cast_func, sizeof(PredefinedFunction));
+
+    PredefinedFunction to_string_func;
+    to_string_func.name = "to_string";
+    to_string_func.id = validator_object->last_function_id++;
+    to_string_func.parameter_count = 1;
+    to_string_func.parameter_ids = malloc(1 * sizeof(int));
+    to_string_func.parameter_ids[0] = ANY_TYPE;
+    to_string_func.infinite_parameters = false;
+    to_string_func.return_id = STRING_TYPE;
+    to_string_func.parent_id = -1;
+    add_object(validator_object->predefined_functions, &to_string_func, sizeof(PredefinedFunction));
 
     PredefinedFunction format_func;
     format_func.name = "format";
@@ -1029,29 +1064,6 @@ void add_predefined_functions(Validator_Object* validator_object) {
     list_set_func.return_id = VOID_TYPE;
     list_set_func.parent_id = LIST_TYPE;
     add_object(validator_object->predefined_functions, &list_set_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction cast_func;
-    cast_func.name = "cast";
-    cast_func.id = validator_object->last_function_id++;
-    cast_func.parameter_count = 2;
-    cast_func.parameter_ids = malloc(2 * sizeof(int));
-    cast_func.parameter_ids[0] = TYPE_AS_TYPE;
-    cast_func.parameter_ids[1] = ANY_TYPE;
-    cast_func.infinite_parameters = false;
-    cast_func.return_id = ANY_TYPE;
-    cast_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &cast_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction to_string_func;
-    to_string_func.name = "to_string";
-    to_string_func.id = validator_object->last_function_id++;
-    to_string_func.parameter_count = 1;
-    to_string_func.parameter_ids = malloc(1 * sizeof(int));
-    to_string_func.parameter_ids[0] = ANY_TYPE;
-    to_string_func.infinite_parameters = false;
-    to_string_func.return_id = STRING_TYPE;
-    to_string_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &to_string_func, sizeof(PredefinedFunction));
 }
 
 void emit_validator(Validator_Object* validator_object, char* output_file) {

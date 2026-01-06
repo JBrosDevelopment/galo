@@ -2,7 +2,7 @@
 # Project settings
 # -----------------------------
 CC       := gcc
-CFLAGS   := -Wall -Wextra -O2
+CFLAGS   := -Wall -Wextra -Wno-unused-parameter -O2
 DBGFLAGS := -Wall -Wextra -g -O0
 LDFLAGS  :=
 
