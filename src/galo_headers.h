@@ -278,6 +278,9 @@ void free_owned_string_array(char** array, int count);
 // VALIDATOR
 /////////////////////////////////////////////////////////////////////
 
+#define NO_PARENT -1
+#define INFINTE_PARAMETERS 0
+
 #define NO_EXPECTED_NODE -67
 #define VOID_TYPE -1
 #define INT_TYPE -2
@@ -311,6 +314,9 @@ typedef struct Validator_Object_t {
     bool is_inside_while_loop;
     bool is_inside_function;
 } Validator_Object;
+
+void add_function(Validator_Object* validator_object, char* name, int return_id, int parameter_count, int* parameter_ids, int parent_id);
+int* predefined_function_parameters(int parameter_count, ...);
 
 Validator_Object create_validator_object();
 void free_validator_object(Validator_Object* validator_object);
@@ -386,7 +392,7 @@ Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* v
 void free_interpreter_object(Interpreter_Object* interpreter_object);
 GaloObject predefined_function_call(Interpreter_Object* interp, PredefinedFunction* predefined_function, int argument_count, GaloObject* arguments);
 GaloObject function_call(Interpreter_Object* interp, FunctionDeclaration* function, int argument_count, GaloObject* arguments);
-void add_builtin_function(Interpreter_Object* interp, char* name, GaloObject (*function)(Interpreter_Object* interp, GaloObject* args, int arg_count));
+void add_builtin_function(Interpreter_Object* interp, int id, GaloObject (*function)(Interpreter_Object* interp, GaloObject* args, int arg_count));
 
 /////////////////////////////////////////////////////////////////////
 // FUNCTIONS AND THEIR DEBUGGER FUNCTIONS

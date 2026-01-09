@@ -1,7 +1,4 @@
-let x string = cast(string, true)
-let y int = cast(int, x)
-print("x: ", x, ", y: ", y, "\n")
-
+println(string concat("a,b,c,d,e", ","))
 
 ##!galo interpret project/main.galo -- 1 5 9 3 -5 4 -99 123 
 ##!include project/lib.galo

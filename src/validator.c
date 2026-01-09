@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #define MEMORY_ADDRESS_PADDING_LOWER -64000
 #define MEMORY_ADDRESS_PADDING_UPPER 64000
@@ -754,316 +755,67 @@ bool function_is_predefined(Validator_Object* validator_object, ScopedIdentifier
     return false;
 }
 
+void add_function(Validator_Object* validator_object, char* name, int return_id, int parameter_count, int* parameter_ids, int parent_id) {
+    PredefinedFunction pf;
+    pf.id = validator_object->last_function_id++;
+    pf.name = name;
+    pf.return_id = return_id;
+    pf.parameter_count = parameter_count;
+    pf.parameter_ids = parameter_ids;
+    pf.infinite_parameters = parameter_count == INFINTE_PARAMETERS;
+    pf.parent_id = parent_id;
+    add_object(validator_object->predefined_functions, &pf, sizeof(PredefinedFunction));
+}
+
+int* predefined_function_parameters(int parameter_count, ...) {
+    int* args = malloc(parameter_count * sizeof(int));
+    if (!args) {
+        return NULL;
+    }
+
+    va_list ap;
+    va_start(ap, parameter_count);
+
+    for (int i = 0; i < parameter_count; i++) {
+        args[i] = va_arg(ap, int);
+    }
+
+    va_end(ap);
+    return args;
+}
+
 void add_predefined_functions(Validator_Object* validator_object) {
     validator_object->predefined_functions = create_object_list();
 
-    PredefinedFunction print_func;
-    print_func.name = "print";
-    print_func.id = validator_object->last_function_id++;
-    print_func.parameter_count = 0;
-    print_func.parameter_ids = NULL;
-    print_func.infinite_parameters = true;
-    print_func.return_id = VOID_TYPE;
-    print_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &print_func, sizeof(PredefinedFunction));
+    add_function(validator_object, "print", VOID_TYPE, INFINTE_PARAMETERS, NULL, NO_PARENT); // id 0
+    add_function(validator_object, "println", VOID_TYPE, INFINTE_PARAMETERS, NULL, NO_PARENT); // id 1
+    add_function(validator_object, "exit", VOID_TYPE, 1, predefined_function_parameters(1, INT_TYPE), NO_PARENT); // id 2
+    add_function(validator_object, "input", STRING_TYPE, 0, NULL, NO_PARENT); // id 3
+    add_function(validator_object, "clear", VOID_TYPE, 0, NULL, NO_PARENT); // id 4
+    add_function(validator_object, "cast", ANY_TYPE, 2, predefined_function_parameters(2, TYPE_AS_TYPE, ANY_TYPE), NO_PARENT); // id 5
+    add_function(validator_object, "to_string", STRING_TYPE, 1, predefined_function_parameters(1, ANY_TYPE), NO_PARENT); // id 6
+    add_function(validator_object, "format", STRING_TYPE, INFINTE_PARAMETERS, NULL, NO_PARENT); // id 7
 
-    PredefinedFunction exit_func;
-    exit_func.name = "exit";
-    exit_func.id = validator_object->last_function_id++;
-    exit_func.parameter_count = 1;
-    exit_func.parameter_ids = malloc(1 * sizeof(int));
-    exit_func.parameter_ids[0] = INT_TYPE;
-    exit_func.infinite_parameters = false;
-    exit_func.return_id = VOID_TYPE;
-    exit_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &exit_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction input_func;
-    input_func.name = "input";
-    input_func.id = validator_object->last_function_id++;
-    input_func.parameter_count = 0;
-    input_func.parameter_ids = NULL;
-    input_func.infinite_parameters = false;
-    input_func.return_id = STRING_TYPE;
-    input_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &input_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction clear_func;
-    clear_func.name = "clear";
-    clear_func.id = validator_object->last_function_id++;
-    clear_func.parameter_count = 0;
-    clear_func.parameter_ids = NULL;
-    clear_func.infinite_parameters = false;
-    clear_func.return_id = VOID_TYPE;
-    clear_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &clear_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction cast_func;
-    cast_func.name = "cast";
-    cast_func.id = validator_object->last_function_id++;
-    cast_func.parameter_count = 2;
-    cast_func.parameter_ids = malloc(2 * sizeof(int));
-    cast_func.parameter_ids[0] = TYPE_AS_TYPE;
-    cast_func.parameter_ids[1] = ANY_TYPE;
-    cast_func.infinite_parameters = false;
-    cast_func.return_id = ANY_TYPE;
-    cast_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &cast_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction to_string_func;
-    to_string_func.name = "to_string";
-    to_string_func.id = validator_object->last_function_id++;
-    to_string_func.parameter_count = 1;
-    to_string_func.parameter_ids = malloc(1 * sizeof(int));
-    to_string_func.parameter_ids[0] = ANY_TYPE;
-    to_string_func.infinite_parameters = false;
-    to_string_func.return_id = STRING_TYPE;
-    to_string_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &to_string_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction format_func;
-    format_func.name = "format";
-    format_func.id = validator_object->last_function_id++;
-    format_func.parameter_count = 0;
-    format_func.parameter_ids = NULL;
-    format_func.infinite_parameters = true;
-    format_func.return_id = STRING_TYPE;
-    format_func.parent_id = -1;
-    add_object(validator_object->predefined_functions, &format_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction string_length_func;
-    string_length_func.name = "length";
-    string_length_func.id = validator_object->last_function_id++;
-    string_length_func.parameter_count = 1;
-    string_length_func.parameter_ids = malloc(1 * sizeof(int));
-    string_length_func.parameter_ids[0] = STRING_TYPE;
-    string_length_func.infinite_parameters = false;
-    string_length_func.return_id = INT_TYPE;
-    string_length_func.parent_id = STRING_TYPE;
-    add_object(validator_object->predefined_functions, &string_length_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction string_index_func;
-    string_index_func.name = "index";
-    string_index_func.id = validator_object->last_function_id++;
-    string_index_func.parameter_count = 2;
-    string_index_func.parameter_ids = malloc(2 * sizeof(int));
-    string_index_func.parameter_ids[0] = STRING_TYPE;
-    string_index_func.parameter_ids[1] = INT_TYPE;
-    string_index_func.infinite_parameters = false;
-    string_index_func.return_id = BYTE_TYPE;
-    string_index_func.parent_id = STRING_TYPE;
-    add_object(validator_object->predefined_functions, &string_index_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction string_contains_func;
-    string_contains_func.name = "contains";
-    string_contains_func.id = validator_object->last_function_id++;
-    string_contains_func.parameter_count = 2;
-    string_contains_func.parameter_ids = malloc(2 * sizeof(int));
-    string_contains_func.parameter_ids[0] = STRING_TYPE;
-    string_contains_func.parameter_ids[1] = STRING_TYPE;
-    string_contains_func.infinite_parameters = false;
-    string_contains_func.return_id = BOOLEAN_TYPE;
-    string_contains_func.parent_id = STRING_TYPE;
-    add_object(validator_object->predefined_functions, &string_contains_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction string_startswith_func;
-    string_startswith_func.name = "starts_with";
-    string_startswith_func.id = validator_object->last_function_id++;
-    string_startswith_func.parameter_count = 2;
-    string_startswith_func.parameter_ids = malloc(2 * sizeof(int));
-    string_startswith_func.parameter_ids[0] = STRING_TYPE;
-    string_startswith_func.parameter_ids[1] = STRING_TYPE;
-    string_startswith_func.infinite_parameters = false;
-    string_startswith_func.return_id = BOOLEAN_TYPE;
-    string_startswith_func.parent_id = STRING_TYPE;
-    add_object(validator_object->predefined_functions, &string_startswith_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction string_endswith_func;
-    string_endswith_func.name = "ends_with";
-    string_endswith_func.id = validator_object->last_function_id++;
-    string_endswith_func.parameter_count = 2;
-    string_endswith_func.parameter_ids = malloc(2 * sizeof(int));
-    string_endswith_func.parameter_ids[0] = STRING_TYPE;
-    string_endswith_func.parameter_ids[1] = STRING_TYPE;
-    string_endswith_func.infinite_parameters = false;
-    string_endswith_func.return_id = BOOLEAN_TYPE;
-    string_endswith_func.parent_id = STRING_TYPE;
-    add_object(validator_object->predefined_functions, &string_endswith_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction string_replace_func;
-    string_replace_func.name = "replace";
-    string_replace_func.id = validator_object->last_function_id++;
-    string_replace_func.parameter_count = 3;
-    string_replace_func.parameter_ids = malloc(3 * sizeof(int));
-    string_replace_func.parameter_ids[0] = STRING_TYPE;
-    string_replace_func.parameter_ids[1] = STRING_TYPE;
-    string_replace_func.parameter_ids[2] = STRING_TYPE;
-    string_replace_func.infinite_parameters = false;
-    string_replace_func.return_id = STRING_TYPE;
-    string_replace_func.parent_id = STRING_TYPE;
-    add_object(validator_object->predefined_functions, &string_replace_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction string_sub_func;
-    string_sub_func.name = "sub";
-    string_sub_func.id = validator_object->last_function_id++;
-    string_sub_func.parameter_count = 3;
-    string_sub_func.parameter_ids = malloc(3 * sizeof(int));
-    string_sub_func.parameter_ids[0] = STRING_TYPE;
-    string_sub_func.parameter_ids[1] = INT_TYPE;
-    string_sub_func.parameter_ids[2] = INT_TYPE;
-    string_sub_func.infinite_parameters = false;
-    string_sub_func.return_id = STRING_TYPE;
-    string_sub_func.parent_id = STRING_TYPE;
-    add_object(validator_object->predefined_functions, &string_sub_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction string_concat_func;
-    string_concat_func.name = "concat";
-    string_concat_func.id = validator_object->last_function_id++;
-    string_concat_func.parameter_count = 2;
-    string_concat_func.parameter_ids = malloc(2 * sizeof(int));
-    string_concat_func.parameter_ids[0] = STRING_TYPE;
-    string_concat_func.parameter_ids[1] = STRING_TYPE;
-    string_concat_func.infinite_parameters = false;
-    string_concat_func.return_id = STRING_TYPE;
-    string_concat_func.parent_id = STRING_TYPE;
-    add_object(validator_object->predefined_functions, &string_concat_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction int_convert_func;
-    int_convert_func.name = "convert";
-    int_convert_func.id = validator_object->last_function_id++;
-    int_convert_func.parameter_count = 1;
-    int_convert_func.parameter_ids = malloc(1 * sizeof(int));
-    int_convert_func.parameter_ids[0] = STRING_TYPE;
-    int_convert_func.infinite_parameters = false;
-    int_convert_func.return_id = INT_TYPE;
-    int_convert_func.parent_id = INT_TYPE;
-    add_object(validator_object->predefined_functions, &int_convert_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction float_convert_func;
-    float_convert_func.name = "convert";
-    float_convert_func.id = validator_object->last_function_id++;
-    float_convert_func.parameter_count = 1;
-    float_convert_func.parameter_ids = malloc(1 * sizeof(int));
-    float_convert_func.parameter_ids[0] = STRING_TYPE;
-    float_convert_func.infinite_parameters = false;
-    float_convert_func.return_id = FLOAT_TYPE;
-    float_convert_func.parent_id = FLOAT_TYPE;
-    add_object(validator_object->predefined_functions, &float_convert_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction bool_convert_func;
-    bool_convert_func.name = "convert";
-    bool_convert_func.id = validator_object->last_function_id++;
-    bool_convert_func.parameter_count = 1;
-    bool_convert_func.parameter_ids = malloc(1 * sizeof(int));
-    bool_convert_func.parameter_ids[0] = STRING_TYPE;
-    bool_convert_func.infinite_parameters = false;
-    bool_convert_func.return_id = BOOLEAN_TYPE;
-    bool_convert_func.parent_id = BOOLEAN_TYPE;
-    add_object(validator_object->predefined_functions, &bool_convert_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction byte_convert_func;
-    byte_convert_func.name = "convert";
-    byte_convert_func.id = validator_object->last_function_id++;
-    byte_convert_func.parameter_count = 1;
-    byte_convert_func.parameter_ids = malloc(1 * sizeof(int));
-    byte_convert_func.parameter_ids[0] = STRING_TYPE;
-    byte_convert_func.infinite_parameters = false;
-    byte_convert_func.return_id = BYTE_TYPE;
-    byte_convert_func.parent_id = BYTE_TYPE;
-    add_object(validator_object->predefined_functions, &byte_convert_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction list_init_func;
-    list_init_func.name = "init";
-    list_init_func.id = validator_object->last_function_id++;
-    list_init_func.parameter_count = 0;
-    list_init_func.parameter_ids = NULL;
-    list_init_func.infinite_parameters = true;
-    list_init_func.return_id = LIST_TYPE;
-    list_init_func.parent_id = LIST_TYPE;
-    add_object(validator_object->predefined_functions, &list_init_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction list_add_func;
-    list_add_func.name = "add";
-    list_add_func.id = validator_object->last_function_id++;
-    list_add_func.parameter_count = 2;
-    list_add_func.parameter_ids = malloc(2 * sizeof(int));
-    list_add_func.parameter_ids[0] = LIST_TYPE;
-    list_add_func.parameter_ids[1] = ANY_TYPE;
-    list_add_func.infinite_parameters = false;
-    list_add_func.return_id = VOID_TYPE;
-    list_add_func.parent_id = LIST_TYPE;
-    add_object(validator_object->predefined_functions, &list_add_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction list_get_func;
-    list_get_func.name = "get";
-    list_get_func.id = validator_object->last_function_id++;
-    list_get_func.parameter_count = 2;
-    list_get_func.parameter_ids = malloc(2 * sizeof(int));
-    list_get_func.parameter_ids[0] = LIST_TYPE;
-    list_get_func.parameter_ids[1] = INT_TYPE;
-    list_get_func.infinite_parameters = false;
-    list_get_func.return_id = ANY_TYPE;
-    list_get_func.parent_id = LIST_TYPE;
-    add_object(validator_object->predefined_functions, &list_get_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction list_length_func;
-    list_length_func.name = "length";
-    list_length_func.id = validator_object->last_function_id++;
-    list_length_func.parameter_count = 1;
-    list_length_func.parameter_ids = malloc(1 * sizeof(int));
-    list_length_func.parameter_ids[0] = LIST_TYPE;
-    list_length_func.infinite_parameters = false;
-    list_length_func.return_id = INT_TYPE;
-    list_length_func.parent_id = LIST_TYPE;
-    add_object(validator_object->predefined_functions, &list_length_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction list_remove_func;
-    list_remove_func.name = "remove";
-    list_remove_func.id = validator_object->last_function_id++;
-    list_remove_func.parameter_count = 2;
-    list_remove_func.parameter_ids = malloc(2 * sizeof(int));
-    list_remove_func.parameter_ids[0] = LIST_TYPE;
-    list_remove_func.parameter_ids[1] = INT_TYPE;
-    list_remove_func.infinite_parameters = false;
-    list_remove_func.return_id = VOID_TYPE;
-    list_remove_func.parent_id = LIST_TYPE;
-    add_object(validator_object->predefined_functions, &list_remove_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction list_clear_func;
-    list_clear_func.name = "clear";
-    list_clear_func.id = validator_object->last_function_id++;
-    list_clear_func.parameter_count = 1;
-    list_clear_func.parameter_ids = malloc(1 * sizeof(int));
-    list_clear_func.parameter_ids[0] = LIST_TYPE;
-    list_clear_func.infinite_parameters = false;
-    list_clear_func.return_id = VOID_TYPE;
-    list_clear_func.parent_id = LIST_TYPE;
-    add_object(validator_object->predefined_functions, &list_clear_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction list_contains_func;
-    list_contains_func.name = "contains";
-    list_contains_func.id = validator_object->last_function_id++;
-    list_contains_func.parameter_count = 2;
-    list_contains_func.parameter_ids = malloc(2 * sizeof(int));
-    list_contains_func.parameter_ids[0] = LIST_TYPE;
-    list_contains_func.parameter_ids[1] = ANY_TYPE;
-    list_contains_func.infinite_parameters = false;
-    list_contains_func.return_id = BOOLEAN_TYPE;
-    list_contains_func.parent_id = LIST_TYPE;
-    add_object(validator_object->predefined_functions, &list_contains_func, sizeof(PredefinedFunction));
-
-    PredefinedFunction list_set_func;
-    list_set_func.name = "set";
-    list_set_func.id = validator_object->last_function_id++;
-    list_set_func.parameter_count = 3;
-    list_set_func.parameter_ids = malloc(3 * sizeof(int));
-    list_set_func.parameter_ids[0] = LIST_TYPE;
-    list_set_func.parameter_ids[1] = INT_TYPE;
-    list_set_func.parameter_ids[2] = ANY_TYPE;
-    list_set_func.infinite_parameters = false;
-    list_set_func.return_id = VOID_TYPE;
-    list_set_func.parent_id = LIST_TYPE;
-    add_object(validator_object->predefined_functions, &list_set_func, sizeof(PredefinedFunction));
+    add_function(validator_object, "length", INT_TYPE, 1, predefined_function_parameters(1, STRING_TYPE), STRING_TYPE); // id 8
+    add_function(validator_object, "index", BYTE_TYPE, 2, predefined_function_parameters(2, STRING_TYPE, INT_TYPE), STRING_TYPE); // id 9
+    add_function(validator_object, "contains", BOOLEAN_TYPE, 2, predefined_function_parameters(2, STRING_TYPE, STRING_TYPE), STRING_TYPE); // id 10
+    add_function(validator_object, "starts_with", BOOLEAN_TYPE, 2, predefined_function_parameters(2, STRING_TYPE, STRING_TYPE), STRING_TYPE); // id 11
+    add_function(validator_object, "ends_with", BOOLEAN_TYPE, 2, predefined_function_parameters(2, STRING_TYPE, STRING_TYPE), STRING_TYPE); // id 12
+    add_function(validator_object, "replace", STRING_TYPE, 3, predefined_function_parameters(3, STRING_TYPE, STRING_TYPE, STRING_TYPE), STRING_TYPE); // id 13
+    add_function(validator_object, "sub", STRING_TYPE, 3, predefined_function_parameters(3, STRING_TYPE, INT_TYPE, INT_TYPE), STRING_TYPE); // id 14
+    add_function(validator_object, "split", LIST_TYPE, 2, predefined_function_parameters(2, STRING_TYPE, STRING_TYPE), STRING_TYPE); // id 15
+    add_function(validator_object, "concat", STRING_TYPE, INFINTE_PARAMETERS, NULL, STRING_TYPE); // id 16
+    
+    add_function(validator_object, "init", LIST_TYPE, 1, predefined_function_parameters(1, TYPE_AS_TYPE), LIST_TYPE); // id 17
+    add_function(validator_object, "add", VOID_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, ANY_TYPE), LIST_TYPE); // id 18
+    add_function(validator_object, "remove", VOID_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, INT_TYPE), LIST_TYPE); // id 19
+    add_function(validator_object, "get", ANY_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, INT_TYPE), LIST_TYPE); // id 20
+    add_function(validator_object, "length", INT_TYPE, 1, predefined_function_parameters(1, LIST_TYPE), LIST_TYPE); // id 21
+    add_function(validator_object, "contains", BOOLEAN_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, ANY_TYPE), LIST_TYPE); // id 22
+    add_function(validator_object, "index", INT_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, ANY_TYPE), LIST_TYPE); // id 23
+    add_function(validator_object, "set", VOID_TYPE, 3, predefined_function_parameters(3, LIST_TYPE, INT_TYPE, ANY_TYPE), LIST_TYPE); // id 24
+    add_function(validator_object, "insert", VOID_TYPE, 3, predefined_function_parameters(3, LIST_TYPE, INT_TYPE, ANY_TYPE), LIST_TYPE); // id 25
+    add_function(validator_object, "clear", VOID_TYPE, 1, predefined_function_parameters(1, LIST_TYPE), LIST_TYPE); // id 26
 }
 
 void emit_validator(Validator_Object* validator_object, char* output_file) {
