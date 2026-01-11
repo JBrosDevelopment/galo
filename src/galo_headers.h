@@ -1,3 +1,4 @@
+#pragma once
 #include <stdbool.h>
 
 #define GALO_VERSION "0.0.1"
@@ -393,6 +394,16 @@ void free_interpreter_object(Interpreter_Object* interpreter_object);
 GaloObject predefined_function_call(Interpreter_Object* interp, PredefinedFunction* predefined_function, int argument_count, GaloObject* arguments);
 GaloObject function_call(Interpreter_Object* interp, FunctionDeclaration* function, int argument_count, GaloObject* arguments);
 void add_builtin_function(Interpreter_Object* interp, int id, GaloObject (*function)(Interpreter_Object* interp, GaloObject* args, int arg_count));
+GaloObject get_field_in_struct(Interpreter_Object* interp, GaloObject* struct_object, int struct_id, Token* field_name);
+GaloObject string_object_value(char* string);
+GaloObject int_object_value(int value);
+GaloObject float_object_value(float value);
+GaloObject bool_object_value(bool value);
+GaloObject byte_object_value(unsigned char value);
+GaloObject list_object_value(ObjectList* list);
+GaloObject void_object_value();
+void print_out_variable_values(Interpreter_Object* interp);
+void print_galo_object(Interpreter_Object* interp, GaloObject* object);
 
 /////////////////////////////////////////////////////////////////////
 // FUNCTIONS AND THEIR DEBUGGER FUNCTIONS

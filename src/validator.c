@@ -806,16 +806,21 @@ void add_predefined_functions(Validator_Object* validator_object) {
     add_function(validator_object, "split", LIST_TYPE, 2, predefined_function_parameters(2, STRING_TYPE, STRING_TYPE), STRING_TYPE); // id 15
     add_function(validator_object, "concat", STRING_TYPE, INFINTE_PARAMETERS, NULL, STRING_TYPE); // id 16
     
-    add_function(validator_object, "init", LIST_TYPE, 1, predefined_function_parameters(1, TYPE_AS_TYPE), LIST_TYPE); // id 17
-    add_function(validator_object, "add", VOID_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, ANY_TYPE), LIST_TYPE); // id 18
-    add_function(validator_object, "remove", VOID_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, INT_TYPE), LIST_TYPE); // id 19
+    add_function(validator_object, "init", LIST_TYPE, 2, predefined_function_parameters(2, TYPE_AS_TYPE, INT_TYPE), LIST_TYPE); // id 17
+    add_function(validator_object, "append", LIST_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, ANY_TYPE), LIST_TYPE); // id 18
+    add_function(validator_object, "remove", LIST_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, INT_TYPE), LIST_TYPE); // id 19
     add_function(validator_object, "get", ANY_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, INT_TYPE), LIST_TYPE); // id 20
     add_function(validator_object, "length", INT_TYPE, 1, predefined_function_parameters(1, LIST_TYPE), LIST_TYPE); // id 21
     add_function(validator_object, "contains", BOOLEAN_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, ANY_TYPE), LIST_TYPE); // id 22
     add_function(validator_object, "index", INT_TYPE, 2, predefined_function_parameters(2, LIST_TYPE, ANY_TYPE), LIST_TYPE); // id 23
-    add_function(validator_object, "set", VOID_TYPE, 3, predefined_function_parameters(3, LIST_TYPE, INT_TYPE, ANY_TYPE), LIST_TYPE); // id 24
-    add_function(validator_object, "insert", VOID_TYPE, 3, predefined_function_parameters(3, LIST_TYPE, INT_TYPE, ANY_TYPE), LIST_TYPE); // id 25
-    add_function(validator_object, "clear", VOID_TYPE, 1, predefined_function_parameters(1, LIST_TYPE), LIST_TYPE); // id 26
+    add_function(validator_object, "set", LIST_TYPE, 3, predefined_function_parameters(3, LIST_TYPE, INT_TYPE, ANY_TYPE), LIST_TYPE); // id 24
+    add_function(validator_object, "insert", LIST_TYPE, 3, predefined_function_parameters(3, LIST_TYPE, INT_TYPE, ANY_TYPE), LIST_TYPE); // id 25
+    add_function(validator_object, "clear", LIST_TYPE, 1, predefined_function_parameters(1, LIST_TYPE), LIST_TYPE); // id 26
+    add_function(validator_object, "list", LIST_TYPE, INFINTE_PARAMETERS, NULL, NO_PARENT); // id 27
+
+    add_function(validator_object, "is_type", BOOLEAN_TYPE, 2, predefined_function_parameters(2, TYPE_AS_TYPE, ANY_TYPE), NO_PARENT); // id 28
+    // can't do sizeof or malloc or any other C function because those would only be valid in the context of a compiler.
+    // It could work with interpreter but wouldn't be valid with transpiling to python or javascript
 }
 
 void emit_validator(Validator_Object* validator_object, char* output_file) {

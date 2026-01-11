@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
         int file_argc = 0;
         string_list_to_owned_array(build_arguments.file_build_options, &file_argv, &file_argc);
 
-        BuildArguments file_build_arguments = process_args(file_argc + 1, file_argv);
+        BuildArguments file_build_arguments = process_args(file_argc, file_argv);
 
         printf("build options from `%s` are valid and will be run accordingly.\n", build_arguments.main_file_path);
         printf("NOTICE: Any WARNINGS about build options being ignored are fine and should be ignored.\n");

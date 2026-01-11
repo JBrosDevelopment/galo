@@ -1,0 +1,1 @@
+#!galo interpret project/main.galo --emit-validator

@@ -1,4 +1,21 @@
-println(string concat("a,b,c,d,e", ","))
+let l1 list = list init(int, 10)
+println(l1)
+l1 = list append(l1, 99)
+println(l1)
+l1 = list append(l1, 98)
+println(l1)
+l1 = list append(l1, 97)
+println(l1)
+l1 = list remove(l1, 1)
+println(l1)
+l1 = list set(l1, 0, 55)
+println(l1)
+l1 = list insert(l1, 1, 125)
+println(l1)
+l1 = list clear(l1)
+println(l1)
+l1 = list(10, "abc", 789.0, true)
+println(l1)
 
 ##!galo interpret project/main.galo -- 1 5 9 3 -5 4 -99 123 
 ##!include project/lib.galo
@@ -24,3 +41,5 @@ println(string concat("a,b,c,d,e", ","))
 # macro_if 
 # define
 # try catch blocks
+# infinite parameters with args, arg_count, arg_types
+# better errors
