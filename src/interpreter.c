@@ -8,28 +8,60 @@
 void ensure_scope_capacity(Interpreter_Object* interp); 
 void push_scope(Interpreter_Object* interp);
 void pop_scope(Interpreter_Object* interp);
-void ensure_call_capacity(Interpreter_Object* interp);
-void push_call_frame(Interpreter_Object* interp, CallFrame frame);
-void pop_call_frame(Interpreter_Object* interp);
 GaloObject interpret_node(Interpreter_Object* interp, Node* node);
 
-void interpret(Interpreter_Object* interp, int input_argc, char** input_argv) {
-    // TODO real implementation with main function and arguments
-
-    // testing implementation
-    printf("starting interpreter\n");
-    push_scope(interp);
-    for (int i = 0; i < interp->ast->size; i++) {
-        Node* node = get_node(interp->ast, i);
-        interpret_node(interp, node);
-        
-        if (interp->did_exit) {
+int interpret(Interpreter_Object* interp, int input_argc, char** input_argv) {
+    FunctionDeclaration* main = NULL;
+    for (int i = 0; i < interp->validator_object->functions->size; i++) {
+        FunctionDeclaration* index = (FunctionDeclaration*)get_object(interp->validator_object->functions, i);
+        if (strcmp(index->name->value, "main") == 0) {
+            main = index;
             break;
         }
     }
-    printf("finished interpreter\n");
-    print_out_variable_values(interp);
-    pop_scope(interp);
+
+    if (main == NULL) {
+        printf("Error no entry point found. Add a `main` function: `fun main() int`\n");
+        exit(1);
+    }
+
+    if (main->parameter_count > 1 || main->parameter_count < 0) {
+        printf("Error: `main` function must have 0 or 1 parameters: `fun main(args list) int` or `fun main() int`\n");
+        exit(1);
+    }
+
+    if (strcmp(main->return_type->value, "int") != 0 && strcmp(main->return_type->value, "void") != 0) {
+        printf("Error: `main` function must return void or int: `fun main() int` or `fun main() void`\n");
+        exit(1);
+    }
+
+    ObjectList* args = create_object_list();
+    if (main->parameter_count == 1) {
+        if (main->parameters[0].type.id != LIST_TYPE) {
+            printf("Error: `main` function parameter must be a list: `fun main(args list) int`\n");
+            exit(1);
+        }
+        for (int i = 0; i < input_argc; i++) {
+            GaloObject arg = string_object_value(input_argv[i]);
+            add_object(args, &arg, sizeof(GaloObject));
+        }
+    }
+
+    GaloObject arg_object = list_object_value(args);
+
+    GaloObject return_value = function_call(interp, main, main->parameter_count, &arg_object);
+
+    if (interp->did_exit) {
+        free(return_value.data);
+        return interp->exit_code;
+    } else if (strcmp(main->return_type->value, "int") != 0) {
+        int exit_code = *(int*)return_value.data;
+        free(return_value.data);
+        return exit_code;
+    } else {
+        free(return_value.data);
+        return 0;
+    }
 }
 
 int get_type_size(Interpreter_Object* interp, int type_id) {
@@ -163,6 +195,11 @@ LValue resolve_lvalue(Interpreter_Object* interp, ScopedIdentifier* identifier) 
 void set_variable_value(Interpreter_Object* interp, int id, GaloObject value) {
     if (interp->variables[id].data != NULL) {
         free(interp->variables[id].data);
+    }
+    if (interp->variable_count <= id) {
+        printf("INTERNAL Runtime Error: Variable id out of range: %d\n", id);
+        interp->did_exit = true;
+        return;
     }
     interp->variables[id] = value;
 }
@@ -299,18 +336,24 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             value.data = malloc(sizeof(float));
             *(float*)value.data = (float)int_value;
         }
-        
+
         set_variable_value(interp, var_decl->id, value);
         
         scope_add_variable(interp, var_decl->id);
-        
-        return value;
+
+        return void_object_value();
     } else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scoped_identifier = (ScopedIdentifier*)node->data;
+        
+        if (scoped_identifier->scope[0].id == -1) {
+            printf("ERROR: Invalid scoped identifier\n");
+            exit(1);
+        }
         
         GaloObject value = interp->variables[scoped_identifier->scope[0].id];
         
         if (scoped_identifier->size > 1) {
+            printf("INTERPRET SCOPE\n");
             value = interp->variables[scoped_identifier->scope[0].id];
             for (int i = 1; i < scoped_identifier->size; i++) {
                 value = get_field_in_struct(interp, &value, value.type_id, scoped_identifier->scope[i].name);
@@ -334,19 +377,20 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         void* address = lv.address; // defaults if it is in a struct field
 
         if (lv.variable_id != -1) { // is a variable (not a struct field)
+            GaloObject* var = &interp->variables[lv.variable_id];
+            
             // free old value
-            free(interp->variables[lv.variable_id].data);
+            free(var->data);
 
             // allocate and set new one
-            interp->variables[lv.variable_id].size = rhs.size;
-            interp->variables[lv.variable_id].type_id = rhs.type_id;
-            interp->variables[lv.variable_id].data = malloc(rhs.size);
-            address = interp->variables[lv.variable_id].data;
+            var->type_id = rhs.type_id;
+            var->size = rhs.size;
+            var->data = malloc(rhs.size);
+
+            address = var->data;
         } 
 
-        int lhs_type_id = lv.type_id;
-        int rhs_type_id = rhs.type_id;
-        if (lhs_type_id == BYTE_TYPE && rhs_type_id == INT_TYPE) {
+        if (lv.type_id == BYTE_TYPE && rhs.type_id == INT_TYPE) {
             int int_value = *(int*)rhs.data;
             rhs.type_id = BYTE_TYPE;
             rhs.size = sizeof(unsigned char);
@@ -354,7 +398,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             rhs.data = malloc(sizeof(unsigned char));
             *(unsigned char*)rhs.data = (unsigned char)int_value;
         }
-        if (lhs_type_id == FLOAT_TYPE && rhs_type_id == INT_TYPE) {
+        if (lv.type_id == FLOAT_TYPE && rhs.type_id == INT_TYPE) {
             int int_value = *(int*)rhs.data;
             rhs.type_id = FLOAT_TYPE;
             rhs.size = sizeof(float);
@@ -365,33 +409,21 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         
         memcpy(address, rhs.data, lv.size);
         
+        free(rhs.data);
         return void_object_value();
 
     } else if (node->type == NODE_CONSTANT) {
         Token* token = (Token*)node->data;
-        GaloObject object;
         if (token->type == TOKEN_CONSTANT_INTEGER) {
             int value = atoi(token->value);
-            object.type_id = INT_TYPE;
-            object.size = sizeof(int);
-            object.data = malloc(sizeof(int));
-            *(int*)object.data = value;
-            return object;
+            return int_object_value(value);
         } else if (token->type == TOKEN_CONSTANT_FLOAT) {
             float value = atof(token->value);
-            object.type_id = FLOAT_TYPE;
-            object.size = sizeof(float);
-            object.data = malloc(sizeof(float));
-            *(float*)object.data = value;
-            return object;
+            return float_object_value(value);
         } else if (token->type == TOKEN_CONSTANT_STRING) {
-            char* value = (char*)token->value;
+            char* value = strdup((char*)token->value);
             resolve_escape_characters(value);
-            object.type_id = STRING_TYPE;
-            object.size = strlen(value) + 1;
-            object.data = malloc(object.size);
-            strcpy((char*)object.data, value);
-            return object;
+            return string_object_value(value);
         } else if (token->type == TOKEN_CONSTANT_BOOLEAN) {
             bool value;
             if (strcmp(token->value, "true") == 0) {
@@ -399,11 +431,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             } else {
                 value = false;
             }
-            object.type_id = BOOLEAN_TYPE;
-            object.size = sizeof(bool);
-            object.data = malloc(sizeof(bool));
-            *(bool*)object.data = value;
-            return object;
+            return bool_object_value(value);
         } 
         else {
             printf("UNKNOWN CONSTANT TYPE: %s\n", get_token_type_name(token->type));
@@ -428,7 +456,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         
         if (op->operator->type == TOKEN_OPERATOR_ARITHMETIC || op->operator->type == TOKEN_OPERATOR_COMPARISON) {
             GaloObject rhs = interpret_node(interp, op->right);
-
+        
             double left_value = 0;
             double right_value = 0;
             int size = sizeof(int);
@@ -445,7 +473,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             } else if (lhs.type_id == BYTE_TYPE) {
                 left_value = *(unsigned char*)lhs.data;
             } else {
-                printf("Type not supported for arithmetic operation, type id: %d\n", lhs.type_id);
+                printf("Type not supported for arithmetic operation, lhs type id: %d, rhs type id: %d\n", lhs.type_id, rhs.type_id);
                 exit(1);
             }
             if (rhs.type_id == FLOAT_TYPE) {
@@ -455,7 +483,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             } else if (rhs.type_id == BYTE_TYPE) {
                 right_value = *(unsigned char*)rhs.data;
             } else {
-                printf("Type not supported for arithmetic operation, type id: %d\n", rhs.type_id);
+                printf("Type not supported for arithmetic operation, lhs type id: %d, rhs type id: %d\n", lhs.type_id, rhs.type_id);
                 exit(1);
             }
 
@@ -499,6 +527,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
                 return value_copy;
             } else { // TOKEN_OPERATOR_COMPARISON
                 bool result = false;
+
                 if (strcmp(operator, "==") == 0) {
                     result = left_value == right_value;
                 } else if (strcmp(operator, "!=") == 0) {
@@ -656,7 +685,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         return void_object_value();
     } else if (node->type == NODE_FUNCTION_CALL) {
         FunctionCall* func_call = (FunctionCall*)node->data;
-
+        
         int argument_count = func_call->argument_count;
         GaloObject* arguments = calloc(argument_count, sizeof(GaloObject));
 
@@ -668,15 +697,14 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
 
         for (int i = 0; i < argument_count; i++) {
             Node arg = func_call->arguments[i];
-            
             bool argument_is_type = false;
-
+            
             if (is_predefined_function && predefined_function->parameter_count != 0) {
                 if (predefined_function->parameter_count >= i && predefined_function->parameter_ids[i] == TYPE_AS_TYPE) {
                     argument_is_type = true;
                 }
             }
-
+            
             if (argument_is_type) {
                 // argument is a type
                 arguments[i] = interpret_node_as_type(interp, &arg);
@@ -685,7 +713,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
                 arguments[i] = interpret_node(interp, &arg);
             }
         }
-
+        
         GaloObject return_value = void_object_value();
 
         if (is_predefined_function) {
@@ -693,16 +721,15 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             return_value = predefined_function_call(interp, predefined_function, argument_count, arguments);
         } else {
             // user defined function call
-            FunctionDeclaration* func = (FunctionDeclaration*)get_object(interp->validator_object->functions, func_call->id);
+            FunctionDeclaration* func = (FunctionDeclaration*)get_object(interp->validator_object->functions, func_call->id - interp->validator_object->predefined_functions->size);
             return_value = function_call(interp, func, argument_count, arguments);
         }
 
-        for (int i = 0; i < argument_count; i++) {
+        for (int i = 0; i < argument_count && is_predefined_function; i++) {
             GaloObject arg = arguments[i];
             free(arg.data);
         }
         free(arguments);
-
         return return_value;
     } else {
         printf("ERROR: Unknown nodetype: %s\n", get_node_type_name(node->type));
@@ -718,8 +745,59 @@ GaloObject predefined_function_call(Interpreter_Object* interp, PredefinedFuncti
     return function(interp, arguments, argument_count);
 }
 GaloObject function_call(Interpreter_Object* interp, FunctionDeclaration* function, int argument_count, GaloObject* arguments) {
-    printf("TODO: function_call\n");
-    exit(1);
+    push_scope(interp);
+
+    for (int i = 0; i < argument_count; i++) {
+        Parameter param = function->parameters[i];
+        
+        GaloObject value = arguments[i];
+
+        if (strcmp(param.type.name->value, "byte") == 0 && value.type_id == INT_TYPE) {
+            int int_value = *(int*)value.data;
+            value.type_id = BYTE_TYPE;
+            value.size = sizeof(unsigned char);
+            free(value.data);
+            value.data = malloc(sizeof(unsigned char));
+            *(unsigned char*)value.data = (unsigned char)int_value;
+        }
+        if (strcmp(param.type.name->value, "float") == 0 && value.type_id == INT_TYPE) {
+            int int_value = *(int*)value.data;
+            value.type_id = FLOAT_TYPE;
+            value.size = sizeof(float);
+            free(value.data);
+            value.data = malloc(sizeof(float));
+            *(float*)value.data = (float)int_value;
+        }
+
+        set_variable_value(interp, param.name.id, value);
+        
+        scope_add_variable(interp, param.name.id);
+    }
+
+    GaloObject return_value = void_object_value();
+
+    for (int i = 0; i < function->body->size; i++) {
+        Node* node = get_node(function->body, i);
+        return_value = interpret_node(interp, node);
+
+        if (interp->did_exit || interp->did_return || i == function->body->size - 1) {
+            break;
+        }
+    }
+    interp->did_return = false;
+
+    GaloObject return_value_copy;
+    return_value_copy.type_id = return_value.type_id;
+    return_value_copy.size = return_value.size;
+    return_value_copy.data = malloc(return_value.size);
+    memcpy(return_value_copy.data, return_value.data, return_value.size);
+
+    if (return_value.type_id != VOID_TYPE) {
+        free(return_value.data);
+    }
+
+    pop_scope(interp);
+    return return_value_copy;
 }
 
 int get_struct_id(Interpreter_Object* interp, const char* name) {
@@ -840,6 +918,11 @@ GaloObject list_object_value(ObjectList* list) {
     return object;
 }
 
+GaloObject builtin_print_all_variables(Interpreter_Object* interp, GaloObject* args, int arg_count) {
+    print_out_variable_values(interp);
+    return void_object_value();
+}
+
 Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* validator_object) {
     Interpreter_Object* interp = calloc(1, sizeof(Interpreter_Object));
 
@@ -851,9 +934,6 @@ Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* v
 
     interp->scope_capacity = 64;
     interp->scope_stack = calloc(interp->scope_capacity, sizeof(ScopeFrame));
-
-    interp->call_capacity = 64;
-    interp->call_stack = calloc(interp->call_capacity, sizeof(CallFrame));
 
     interp->builtin_count = validator_object->predefined_functions->size;
     interp->builtins = calloc(interp->builtin_count, sizeof(GaloObject (*)(Interpreter_Object* interp, GaloObject* args, int arg_count)));
@@ -889,8 +969,9 @@ Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* v
     add_builtin_function(interp, 25, builtin_list_insert);
     add_builtin_function(interp, 26, builtin_list_clear);
     add_builtin_function(interp, 27, builtin_list);
-
+    
     add_builtin_function(interp, 28, builtin_is_type);
+    add_builtin_function(interp, 29, builtin_print_all_variables);
 
     return interp;
 }
@@ -898,7 +979,6 @@ Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* v
 void free_interpreter_object(Interpreter_Object* interp) {
     free(interp->variables);
     free(interp->scope_stack);
-    free(interp->call_stack);
     free(interp);
 }
 
@@ -921,66 +1001,50 @@ void push_scope(Interpreter_Object* interp) {
     scope->variable_ids = malloc(sizeof(int) * scope->capacity);
 }
 
+bool type_is_malloced(GaloObject* object) {
+    return object->type_id != INT_TYPE && object->type_id != FLOAT_TYPE && object->type_id != BOOLEAN_TYPE && object->type_id != BYTE_TYPE;
+}
+
 void pop_scope(Interpreter_Object* interp) {
     ScopeFrame* scope = &interp->scope_stack[--interp->scope_depth];
 
     for (int i = 0; i < scope->count; i++) {
         int id = scope->variable_ids[i];
-        free(interp->variables[id].data);
+        if (type_is_malloced(&interp->variables[id])) {
+            free(interp->variables[id].data);
+        }
         interp->variables[id].data = NULL;
     }
 
     free(scope->variable_ids);
 }
 
-void ensure_call_capacity(Interpreter_Object* interp) {
-    if (interp->call_depth >= interp->call_capacity) {
-        interp->call_capacity *= 2;
-        interp->call_stack = realloc(
-            interp->call_stack,
-            sizeof(CallFrame) * interp->call_capacity
-        );
-    }
-}
-
-void push_call_frame(Interpreter_Object* interp, CallFrame frame) {
-    ensure_call_capacity(interp);
-    interp->call_stack[interp->call_depth++] = frame;
-}
-
-void pop_call_frame(Interpreter_Object* interp) {
-    interp->call_depth--;
-
-    CallFrame frame = interp->call_stack[interp->call_depth];
-    free(frame.return_node);
-}
-
 void print_galo_object(Interpreter_Object* interp, GaloObject* object) {
     if (object->data == NULL && object->type_id != VOID_TYPE) {
-        printf("type: %d, size: %d, data: NULL\n", object->type_id, object->size);
+        printf("data-address: %p, type: %d, size: %d, data: NULL\n", object->data, object->type_id, object->size);
     } else if (object->type_id == VOID_TYPE) {
-        printf("type: void, size: %d\n", object->size);
+        printf("data-address: %p, type: void, size: %d\n", object->data, object->size);
     } else if (object->type_id == INT_TYPE) {
-        printf("type: int, size: %d, value: %d\n", object->size, *(int*)object->data);
+        printf("data-address: %p, type: int, size: %d, value: %d\n", object->data, object->size, *(int*)object->data);
     } else if (object->type_id == FLOAT_TYPE) {
-        printf("type: float, size: %d, value: %f\n", object->size, *(float*)object->data);
+        printf("data-address: %p, type: float, size: %d, value: %f\n", object->data, object->size, *(float*)object->data);
     } else if (object->type_id == BYTE_TYPE) {
-        printf("type: byte, size: %d, value: %d\n", object->size, *(unsigned char*)object->data);
+        printf("data-address: %p, type: byte, size: %d, value: %d\n", object->data, object->size, *(unsigned char*)object->data);
     } else if (object->type_id == STRING_TYPE) {
-        printf("type: string, size: %d, value: %s\n", object->size, (char*)object->data);
+        printf("data-address: %p, type: string, size: %d, value: %s\n", object->data, object->size, (char*)object->data);
     } else if (object->type_id == BOOLEAN_TYPE) {
-        printf("type: bool, size: %d, value: %d\n", object->size, *(bool*)object->data);
+        printf("data-address: %p, type: bool, size: %d, value: %d\n", object->data, object->size, *(bool*)object->data);
     } else if (object->type_id == LIST_TYPE) {
-        printf("type: list, size: %d\n", object->size);
+        printf("data-address: %p, type: list, size: %d\n", object->data, object->size);
         ObjectList* list = (ObjectList*)object->data;
         for (int i = 0; i < list->size; i++) {
             printf("  ");
             print_galo_object(interp, (GaloObject*)list->objects[i]);
         }
     } else if (object->type_id == ANY_TYPE) {
-        printf("type: any, size: %d\n", object->size);
+        printf("data-address: %p, type: any, size: %d\n", object->data, object->size);
     } else {
-        printf("type: ");
+        printf("data-address: %p, type: ", object->data);
         StructDeclaration* struct_decl = get_struct_from_id(object->type_id, interp->validator_object);
         if (struct_decl == NULL) {
             printf("%d, size: %d value: [struct not found]\n", object->type_id, object->size);
@@ -1001,30 +1065,30 @@ void print_out_variable_values(Interpreter_Object* interp) {
     for (int i = 0; i < interp->variable_count; i++) {
         GaloObject object = interp->variables[i];
         if (object.data == NULL && object.type_id != VOID_TYPE) {
-            printf("id: %d, type: %d, size: %d, data: NULL\n", i, object.type_id, object.size);
+            printf("id: %d, data-address: %p, type: %d, size: %d, data: NULL\n", i, object.data, object.type_id, object.size);
         } else if (object.type_id == VOID_TYPE) {
-            printf("id: %d, type: void, size: %d\n", i, object.size);
+            printf("id: %d, data-address: %p, type: void, size: %d\n", i, object.data, object.size);
         } else if (object.type_id == INT_TYPE) {
-            printf("id: %d, type: int, size: %d, value: %d\n", i, object.size, *(int*)object.data);
+            printf("id: %d, data-address: %p, type: int, size: %d, value: %d\n", i, object.data, object.size, *(int*)object.data);
         } else if (object.type_id == FLOAT_TYPE) {
-            printf("id: %d, type: float, size: %d, value: %f\n", i, object.size, *(float*)object.data);
+            printf("id: %d, data-address: %p, type: float, size: %d, value: %f\n", i, object.data, object.size, *(float*)object.data);
         } else if (object.type_id == BYTE_TYPE) {
-            printf("id: %d, type: byte, size: %d, value: %d\n", i, object.size, *(unsigned char*)object.data);
+            printf("id: %d, data-address: %p, type: byte, size: %d, value: %d\n", i, object.data, object.size, *(unsigned char*)object.data);
         } else if (object.type_id == STRING_TYPE) {
-            printf("id: %d, type: string, size: %d, value: %s\n", i, object.size, (char*)object.data);
+            printf("id: %d, data-address: %p, type: string, size: %d, value: %s\n", i, object.data, object.size, (char*)object.data);
         } else if (object.type_id == BOOLEAN_TYPE) {
-            printf("id: %d, type: bool, size: %d, value: %d\n", i, object.size, *(bool*)object.data);
+            printf("id: %d, data-address: %p, type: bool, size: %d, value: %d\n", i, object.data, object.size, *(bool*)object.data);
         } else if (object.type_id == LIST_TYPE) {
-            printf("id: %d, type: list, size: %d\n", i, object.size);
+            printf("id: %d, data-address: %p, type: list, size: %d\n", i, object.data, object.size);
             ObjectList* list = (ObjectList*)object.data;
             for (int i = 0; i < list->size; i++) {
                 printf("  ");
                 print_galo_object(interp, (GaloObject*)list->objects[i]);
             }
         } else if (object.type_id == ANY_TYPE) {
-            printf("id: %d, type: any, size: %d\n", i, object.size);
+            printf("id: %d, data-address: %p, type: any, size: %d\n", i, object.data, object.size);
         } else {
-            printf("id: %d, type: ", i);
+            printf("id: %d, data-address: %p, type: ", i, object.data);
             StructDeclaration* struct_decl = get_struct_from_id(object.type_id, interp->validator_object);
             if (struct_decl == NULL) {
                 printf("%d, size: %d value: [struct not found]\n", object.type_id, object.size);

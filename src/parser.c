@@ -714,22 +714,22 @@ void debug_parser_node(Node* node, FILE* out) {
     else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scope = (ScopedIdentifier*)node->data;
         for (int i = 0; i < scope->size; i++) {
-            fprintf(out, "%s ", scope->scope[i].name->value);
+            fprintf(out, "%s[%d] ", scope->scope[i].name->value, scope->scope[i].id);
         }
     }
     else if (node->type == NODE_VARIABLE_DECLARATION) {
         VariableDeclaration* var_decl = (VariableDeclaration*)node->data;
         if (var_decl->value.type == NODE_EMPTY) {
-            fprintf(out, "let %s %s", var_decl->name->value, var_decl->type->value);
+            fprintf(out, "let %s[%d] %s[%d]", var_decl->name->value, var_decl->id, var_decl->type->value, var_decl->type_id);
         } else {
-            fprintf(out, "let %s %s = ", var_decl->name->value, var_decl->type->value);
+            fprintf(out, "let %s[%d] %s[%d] = ", var_decl->name->value, var_decl->id, var_decl->type->value, var_decl->type_id);
             debug_parser_node(&var_decl->value, out);
         }
     }
     else if (node->type == NODE_VARIABLE_ASSIGNMENT) {
         VariableAssignment* var_assign = (VariableAssignment*)node->data;
         for (int i = 0; i < var_assign->identifier.size; i++) {
-            fprintf(out, "%s ", var_assign->identifier.scope[i].name->value);
+            fprintf(out, "%s[%d] ", var_assign->identifier.scope[i].name->value, var_assign->identifier.scope[i].id);
         }
         fprintf(out, "= ");
         debug_parser_node(&var_assign->value, out);
@@ -740,12 +740,12 @@ void debug_parser_node(Node* node, FILE* out) {
         if (func_decl->struct_implementation) {
             fprintf(out, " %s", func_decl->struct_implementation->value);
         }
-        fprintf(out, " %s(", func_decl->name->value);
+        fprintf(out, " %s[%d](", func_decl->name->value, func_decl->id);
         for (int i = 0; i < func_decl->parameter_count; i++) {
             if (i > 0) {
                 fprintf(out, ", ");
             }
-            fprintf(out, "%s %s", func_decl->parameters[i].name.name->value, func_decl->parameters[i].type.name->value);
+            fprintf(out, "%s[%d] %s[%d]", func_decl->parameters[i].name.name->value, func_decl->parameters[i].name.id, func_decl->parameters[i].type.name->value, func_decl->parameters[i].type.id);
         }
         fprintf(out, ") %s\n", func_decl->return_type->value);
 
@@ -762,20 +762,20 @@ void debug_parser_node(Node* node, FILE* out) {
         }
     } else if(node->type == NODE_STRUCT_DECLARATION) {
         StructDeclaration* struct_decl = (StructDeclaration*)node->data;
-        fprintf(out, "struct %s\n", struct_decl->name->value);
+        fprintf(out, "struct %s[%d]\n", struct_decl->name->value, struct_decl->id);
         for (int i = 0; i < struct_decl->field_count; i++) {
-            fprintf(out, "    %s %s\n", struct_decl->fields[i].name.name->value, struct_decl->fields[i].type.name->value);
+            fprintf(out, "    %s[%d] %s[%d]\n", struct_decl->fields[i].name.name->value, struct_decl->fields[i].name.id, struct_decl->fields[i].type.name->value, struct_decl->fields[i].type.id);
         }
         fprintf(out, "end");
     } else if(node->type == NODE_FUNCTION_CALL) {
         FunctionCall* func_call = (FunctionCall*)node->data;
         for (int i = 0; i < func_call->scope_size; i++) {
-            fprintf(out, "%s", func_call->scope[i].name->value);
+            fprintf(out, "%s[%d]", func_call->scope[i].name->value, func_call->scope[i].id);
             if (i < func_call->scope_size - 1) {
                 fprintf(out, " ");
             }
         }
-        fprintf(out, "( ");
+        fprintf(out, "[%d]( ", func_call->id);
         for (int i = 0; i < func_call->argument_count; i++) {
             if (i > 0) {
                 fprintf(out, ", ");

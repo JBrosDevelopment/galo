@@ -3,7 +3,7 @@
 # -----------------------------
 CC       := gcc
 CFLAGS   := -Wall -Wextra -Wno-unused-parameter -O2
-DBGFLAGS := -Wall -Wextra -g -O0
+DBGFLAGS := -Wall -Wextra -Wno-unused-parameter -g -O0
 LDFLAGS  :=
 
 SRC_DIR  := src

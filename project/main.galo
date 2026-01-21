@@ -1,40 +1,17 @@
-let l1 list = list init(int, 10)
-println(l1)
-l1 = list append(l1, 99)
-println(l1)
-l1 = list append(l1, 98)
-println(l1)
-l1 = list append(l1, 97)
-println(l1)
-l1 = list remove(l1, 1)
-println(l1)
-l1 = list set(l1, 0, 55)
-println(l1)
-l1 = list insert(l1, 1, 125)
-println(l1)
-l1 = list clear(l1)
-println(l1)
-l1 = list(10, "abc", 789.0, true)
-println(l1)
+#!galo interpret project/main.galo --emit-validator --emit-ast -- 1 5 9 3 -5 4 -99 123 
+#!include project/lib.galo
 
-##!galo interpret project/main.galo -- 1 5 9 3 -5 4 -99 123 
-##!include project/lib.galo
-#
-#fun main(args list) int
-#    let x int = 0
-#    let i int = 0
-#    while (list length(args) > i)
-#        let arg string = list get(args, i)
-#        let val int = cast(int, arg)
-#        if (val == -6)
-#            print("INVALID ARGUMENT:", arg, "\n")
-#            return 1
-#        end
-#        x = add(x, val)
-#        i = increment(i)
-#    end
-#    print("args total up to: ", x, "\n")
-#end
+fun main(args list) void
+    let i int = 0
+    let x int = 0
+    while (list length(args) > i)
+        let s string = list get(args, i)
+        let v int = cast(int, s)
+        x = add(x, v)
+        i = increment(i)
+    end
+    println(x)
+end
 
 
 #TODO

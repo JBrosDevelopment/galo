@@ -10,7 +10,7 @@
 #define TYPE_NOT_IN_BOUNDS(type) type < MEMORY_ADDRESS_PADDING_LOWER || type > MEMORY_ADDRESS_PADDING_UPPER
 
 int validate_node(Node* node, Validator_Object* validator_object); // Forward declaration
-bool function_is_predefined(Validator_Object* validator_object, ScopedIdentifier* path, PredefinedFunction** predefined_function); // Forward declaration
+bool function_is_predefined(Validator_Object* validator_object, Identifier* path, int path_count, PredefinedFunction** predefined_function); // Forward declaration
 
 void validator(NodeList* ast, Validator_Object* validator_object) {
     for (int i = 0; i < ast->size; i++) {
@@ -335,12 +335,13 @@ int validate_node(Node* node, Validator_Object* validator_object) {
     }
     else if (node->type == NODE_FUNCTION_CALL) {
         FunctionCall* func_call = (FunctionCall*)node->data;
-        ScopedIdentifier* scoped_func = (ScopedIdentifier*)node->data;
+        Identifier* scoped_func = (Identifier*)func_call->scope;
+        int scoped_func_size = func_call->scope_size;
         
         int func_id = NO_EXPECTED_NODE;
         for (int i = 0; i < validator_object->functions->size; i++) {
             FunctionDeclaration* index_func_decl = (FunctionDeclaration*)validator_object->functions->objects[i];
-            if (strcmp(scoped_func->scope[scoped_func->size - 1].name->value, index_func_decl->name->value) == 0) {
+            if (strcmp(scoped_func[scoped_func_size - 1].name->value, index_func_decl->name->value) == 0) {
                 if (func_call->scope_size == 2) {
                     // static function call
                     int struct_id = get_id_from_name(func_call->scope[0].name, validator_object);
@@ -354,13 +355,13 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                         continue;
                     }
                     func_id = index_func_decl->id;
-                    scoped_func->scope[scoped_func->size - 1].id = index_func_decl->id;
+                    scoped_func[scoped_func_size - 1].id = index_func_decl->id;
                     break;
                 }
                 else if (func_call->scope_size != 1) {
                     // dynamic function call
                     int var_id = get_id_from_name(func_call->scope[0].name, validator_object);
-                    scoped_func->scope[0].id = var_id;
+                    scoped_func[0].id = var_id;
 
                     if (var_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(var_id)) {
                         fprintf(stderr, "variable doesn't exist: `%s` in line %d\n", func_call->scope[0].name->value, func_call->scope[0].name->line);
@@ -369,27 +370,27 @@ int validate_node(Node* node, Validator_Object* validator_object) {
 
                     VariableDeclaration* var = get_variable_from_id(var_id, validator_object);
                     if (var == NULL) {
-                        fprintf(stderr, "variable doesn't exist: `%s` in line %d\n", scoped_func->scope[0].name->value, scoped_func->scope[0].name->line);
+                        fprintf(stderr, "variable doesn't exist: `%s` in line %d\n", scoped_func[0].name->value, scoped_func[0].name->line);
                         exit(1);
                     }
                     int var_type_id = get_id_from_name(var->type, validator_object);
                     if (var_type_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(var_type_id)) {
-                        fprintf(stderr, "variable type doesn't exist: `%s` in line %d\n", scoped_func->scope[0].name->value, scoped_func->scope[0].name->line);
+                        fprintf(stderr, "variable type doesn't exist: `%s` in line %d\n", scoped_func[0].name->value, scoped_func[0].name->line);
                         exit(1);
                     }
 
                     if (contains_int(validator_object->active_variables, var->id) == 0) {
-                        fprintf(stderr, "variable is not initialized: `%s` in line %d\n", scoped_func->scope[0].name->value, scoped_func->scope[0].name->line);
+                        fprintf(stderr, "variable is not initialized: `%s` in line %d\n", scoped_func[0].name->value, scoped_func[0].name->line);
                         exit(1);
                     }
                     
                     int last_type_id = var_type_id;
                     
-                    for (int i = 1; i < scoped_func->size; i++) {
-                        if (i == scoped_func->size - 1) {
+                    for (int i = 1; i < scoped_func_size; i++) {
+                        if (i == scoped_func_size - 1) {
                             break;
                         }
-                        Token* field = scoped_func->scope[i].name;
+                        Token* field = scoped_func[i].name;
                         StructDeclaration* struct_decl = get_struct_from_id(last_type_id, validator_object);
                         if (struct_decl == NULL) {
                             fprintf(stderr, "struct doesn't exist: `%s` in line %d\n", field->value, field->line);
@@ -407,11 +408,11 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                             exit(1);
                         }
                         last_type_id = found_field->type.id;
-                        scoped_func->scope[i].id = last_type_id;
+                        scoped_func[i].id = last_type_id;
                     }
 
                     if (last_type_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(last_type_id)) {
-                        fprintf(stderr, "field type doesn't exist: `%s` in line %d\n", scoped_func->scope[0].name->value, scoped_func->scope[0].name->line);
+                        fprintf(stderr, "field type doesn't exist: `%s` in line %d\n", scoped_func[0].name->value, scoped_func[0].name->line);
                         exit(1);
                     }
                     
@@ -423,22 +424,27 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                     func_id = index_func_decl->id;
                     break;
                 } else {
+                    func_call->scope[0].id = get_id_from_name(func_call->scope[0].name, validator_object);
                     func_id = index_func_decl->id;
                     break;
                 }
             }
         }
         PredefinedFunction* predefined_function = NULL;
-        bool is_predefined = function_is_predefined(validator_object, scoped_func, &predefined_function);
+        bool is_predefined = function_is_predefined(validator_object, scoped_func, scoped_func_size, &predefined_function);
 
         if ((func_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(func_id)) && !is_predefined) {
-            fprintf(stderr, "function doesn't exist: `%s` in line %d\n", scoped_func->scope[scoped_func->size - 1].name->value, scoped_func->scope[0].name->line);
+            fprintf(stderr, "function doesn't exist: `%s` in line %d\n", scoped_func[scoped_func_size - 1].name->value, scoped_func[0].name->line);
             exit(1);
         }
 
         if (is_predefined) {
             func_id = predefined_function->id;
             func_call->id = func_id;
+            for (int i = 0; i < scoped_func_size - 1; i++) {
+                func_call->scope[i].id = get_id_from_name(func_call->scope[i].name, validator_object);
+            }
+            func_call->scope[func_call->scope_size - 1].id = func_id;
             if (!predefined_function->infinite_parameters) {
                 int i;
                 for (i = 0; i < func_call->argument_count; i++) {
@@ -463,6 +469,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                             fprintf(stderr, "Invalid type in function call `%s` in line %d\n", func_call->scope[func_call->scope_size - 1].name->value, func_call->scope[0].name->line);
                             exit(1);
                         }
+                        arg_data->scope[0].id = TYPE_AS_TYPE;
                         continue;
                     }
 
@@ -492,7 +499,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
             func_call->id = func_id;
             FunctionDeclaration* func_decl = get_function_from_id(func_id, validator_object);
             if (func_decl == NULL) {
-                fprintf(stderr, "function doesn't exist: `%s` in line %d\n", scoped_func->scope[scoped_func->size - 1].name->value, scoped_func->scope[0].name->line);
+                fprintf(stderr, "function doesn't exist: `%s` in line %d\n", scoped_func[scoped_func_size - 1].name->value, scoped_func[0].name->line);
                 exit(1);
             }
             
@@ -501,7 +508,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                 exit(1);
             }
     
-            for (int i = 1; i < func_call->argument_count; i++) {
+            for (int i = 0; i < func_call->argument_count; i++) {
                 Node arg = func_call->arguments[i];
                 int arg_type_id = validate_node(&arg, validator_object);
                 int parameter_type_id = func_decl->parameters[i].type.id;
@@ -554,6 +561,8 @@ int validate_node(Node* node, Validator_Object* validator_object) {
             var.value = empty;
             var.id = validator_object->last_variable_id++;
             var.type_id = param->type.id;
+            param->name.id = var.id;
+            param->type.id = var.type_id;
             add_object(validator_object->variables, &var, sizeof(VariableDeclaration));
             add_int(validator_object->active_variables, var.id);
         }
@@ -724,18 +733,18 @@ void debug_validator(Validator_Object* validator_object, FILE* out) {
     fprintf(out, "End of Validator Table\n");
 }
 
-bool function_is_predefined(Validator_Object* validator_object, ScopedIdentifier* path, PredefinedFunction** predefined_function) {
+bool function_is_predefined(Validator_Object* validator_object, Identifier* path, int path_count, PredefinedFunction** predefined_function) {
     for (int i = 0; i < validator_object->predefined_functions->size; i++) {
         PredefinedFunction* pf = (PredefinedFunction*)get_object(validator_object->predefined_functions, i);
-        if (strcmp(path->scope[path->size - 1].name->value, pf->name) == 0) {
-            if (path->size == 2) {
+        if (strcmp(path[path_count - 1].name->value, pf->name) == 0) {
+            if (path_count == 2) {
                 if (pf->parent_id == -1) {
                     continue;
                 }
 
-                int struct_id = get_id_from_name(path->scope[0].name, validator_object);
+                int struct_id = get_id_from_name(path[0].name, validator_object);
                 if (struct_id == NO_EXPECTED_NODE || TYPE_NOT_IN_BOUNDS(struct_id)) {
-                    fprintf(stderr, "struct doesn't exist: `%s` in line %d\n", path->scope[0].name->value, path->scope[0].name->line);
+                    fprintf(stderr, "struct doesn't exist: `%s` in line %d\n", path[0].name->value, path[0].name->line);
                     exit(1);
                 }
 
@@ -744,7 +753,7 @@ bool function_is_predefined(Validator_Object* validator_object, ScopedIdentifier
                 }
             }
 
-            if (path->size == 1 && pf->parent_id != -1) {
+            if (path_count == 1 && pf->parent_id != -1) {
                 continue;
             }
 
@@ -819,6 +828,7 @@ void add_predefined_functions(Validator_Object* validator_object) {
     add_function(validator_object, "list", LIST_TYPE, INFINTE_PARAMETERS, NULL, NO_PARENT); // id 27
 
     add_function(validator_object, "is_type", BOOLEAN_TYPE, 2, predefined_function_parameters(2, TYPE_AS_TYPE, ANY_TYPE), NO_PARENT); // id 28
+    add_function(validator_object, "print_all_variables", VOID_TYPE, 0, NULL, NO_PARENT); // id 29 
     // can't do sizeof or malloc or any other C function because those would only be valid in the context of a compiler.
     // It could work with interpreter but wouldn't be valid with transpiling to python or javascript
 }

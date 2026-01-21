@@ -332,8 +332,8 @@ void parse_pass_through_flags(int argc, char** argv, int* index, BuildArguments*
         return;
     }
 
-    while (*index < argc) {
-        char* pass_through_flag = argv[*index];
+    while (*index < argc && strcmp(argv[*index], "\n") != 0 && strcmp(argv[*index], "\r") != 0 && strcmp(argv[*index], "\0") != 0) {
+        char* pass_through_flag = strdup(argv[*index]);
         add_string(build_arguments->passthrough_flags, pass_through_flag);
         (*index)++;
     }
@@ -589,7 +589,7 @@ void free_build_arguments(BuildArguments* build_arguments) {
         free_string_owned_list(build_arguments->input_files);
     }
     if (build_arguments->passthrough_flags != NULL) {
-        free_string_list(build_arguments->passthrough_flags);
+        free_string_owned_list(build_arguments->passthrough_flags);
     }
     if (build_arguments->file_build_options != NULL) {
         free_string_owned_list(build_arguments->file_build_options);

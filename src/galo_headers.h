@@ -343,17 +343,11 @@ typedef struct GaloObject_t {
     void* data;
 } GaloObject;
 
-typedef struct {
+typedef struct ScopeFrame_t {
     int* variable_ids;
     int  count;
     int  capacity;
 } ScopeFrame;
-
-typedef struct CallFrame_t {
-    int function_id;
-    Node* return_node;
-    int scope_depth_at_entry;
-} CallFrame;
 
 typedef struct Interpreter_Object_t {
     // Program data
@@ -373,11 +367,6 @@ typedef struct Interpreter_Object_t {
     ScopeFrame* scope_stack;
     int scope_depth;
     int scope_capacity;
-
-    // Call stack
-    CallFrame* call_stack;
-    int call_depth;
-    int call_capacity;
 
     // Execution state
     Node* current_node;
@@ -404,6 +393,8 @@ GaloObject list_object_value(ObjectList* list);
 GaloObject void_object_value();
 void print_out_variable_values(Interpreter_Object* interp);
 void print_galo_object(Interpreter_Object* interp, GaloObject* object);
+GaloObject function_call(Interpreter_Object* interp, FunctionDeclaration* function, int argument_count, GaloObject* arguments);
+GaloObject predefined_function_call(Interpreter_Object* interp, PredefinedFunction* predefined_function, int argument_count, GaloObject* arguments);
 
 /////////////////////////////////////////////////////////////////////
 // FUNCTIONS AND THEIR DEBUGGER FUNCTIONS
@@ -434,7 +425,7 @@ void build_option_new(char* project_name);
 void build_option_version();
 void build_option_help();
 
-void interpret(Interpreter_Object* interpreter_object, int input_argc, char** input_argv);
+int interpret(Interpreter_Object* interpreter_object, int input_argc, char** input_argv);
 GaloObject interpret_node(Interpreter_Object* interpreter_object, Node* node);
 
 void transpile();

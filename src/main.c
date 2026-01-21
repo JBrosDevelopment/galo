@@ -54,14 +54,14 @@ int main(int argc, char *argv[]) {
     
     int index = 0;
     parser(token_list, object_list, ast, &index);
+    
+    validator(ast, &validator_object);
 
     if (build_arguments.emit_ast) {
         printf("Emitting AST to emit_ast.txt\n");
         emit_ast(ast, "emit_ast.txt");
         printf("Finished emitting AST.\n");
     }
-    
-    validator(ast, &validator_object);
 
     if (build_arguments.emit_validator) {
         printf("Emitting Validator to emit_validator.txt\n");
