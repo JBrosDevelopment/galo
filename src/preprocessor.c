@@ -76,7 +76,7 @@ void preprocess_with_build_options(char* file_name, StringList* source_code_file
                 exit(1);
             }
     
-            char* filename;
+            char* include_file_name;
             if (*rest == '"') {
                 rest++;
                 char* end = strchr(rest, '"');
@@ -85,26 +85,53 @@ void preprocess_with_build_options(char* file_name, StringList* source_code_file
                     exit(1);
                 }
                 *end = '\0';
-                filename = rest;
+                include_file_name = rest;
             } else {
                 char* end = strchr(rest, '\r');
                 if (end) {
                     *end = '\0';
                 }
-                filename = rest;
+                include_file_name = rest;
             }
     
-            if (filename == NULL) {
+            if (include_file_name == NULL) {
                 printf("ERROR: Internal error in preprocessing, failed to get child file from parent file: `%s`\n", file_name);
             }
-            if (contains_string(source_code_file_names, filename)) {
+            if (contains_string(source_code_file_names, include_file_name)) {
                 continue;
             }
+
+            if (strlen(include_file_name) > 1 && include_file_name[1] != ':') {
+                const char* forward_slash = strrchr(file_name, '/');
+                const char* back_slash = strrchr(file_name, '\\');
+                if (forward_slash) {
+                    size_t dir_len = forward_slash - file_name + 1;
+                    size_t inc_len = strlen(include_file_name);
+            
+                    char *combined = malloc(dir_len + inc_len + 1);
+            
+                    memcpy(combined, file_name, dir_len);
+                    memcpy(combined + dir_len, include_file_name, inc_len + 1);
+            
+                    include_file_name = combined; 
+                } else if (back_slash) {
+                    size_t dir_len = back_slash - file_name + 1;
+                    size_t inc_len = strlen(include_file_name);
+            
+                    char *combined = malloc(dir_len + inc_len + 1);
+            
+                    memcpy(combined, file_name, dir_len);
+                    memcpy(combined + dir_len, include_file_name, inc_len + 1);
+            
+                    include_file_name = combined;
+                }
+            }
+
             StringList* child_file_build_options = create_string_list();
-            preprocess_with_build_options(filename, source_code_file_names, source_code_files, child_file_build_options);
+            preprocess_with_build_options(include_file_name, source_code_file_names, source_code_files, child_file_build_options);
             if (child_file_build_options->size > 0) {
-                trim_trailing_whitespace(filename);
-                printf("WARNING: Child file `%s` has build options which will be ignored\n", filename);
+                trim_trailing_whitespace(include_file_name);
+                printf("WARNING: Child file `%s` has build options which will be ignored\n", include_file_name);
             }
             free_string_list(child_file_build_options);
         } else if (strcmp(directive, "galo") == 0) {
@@ -156,13 +183,14 @@ void trim_trailing_whitespace(char* s) {
     }
 }
 
-const char* read_file(char* filename) {
-    FILE* f = fopen(filename, "rb");
+const char* read_file(char* include_file_name) {
+    FILE* f = fopen(include_file_name, "rb");
 
     if (!f) {
         printf("Failed to open file: '");
-        for (int i = 0; i < (int)strlen(filename); i++) {
-            printf("%c", filename[i]);
+        trim_trailing_whitespace(include_file_name);
+        for (int i = 0; i < (int)strlen(include_file_name); i++) {
+            printf("%c", include_file_name[i]);
         }
         printf("'\n");
         return NULL;
@@ -170,14 +198,14 @@ const char* read_file(char* filename) {
 
     if (fseek(f, 0, SEEK_END) != 0) {
         fclose(f);
-        printf("Failed to seek to end of file: %s\n", filename);
+        printf("Failed to seek to end of file: %s\n", include_file_name);
         return NULL;
     }
 
     long size = ftell(f);
     if (size < 0) {
         fclose(f);
-        printf("Failed to get file size: %s\n", filename);
+        printf("Failed to get file size: %s\n", include_file_name);
         return NULL;
     }
     rewind(f);
@@ -185,7 +213,7 @@ const char* read_file(char* filename) {
     char* buffer = (char*)malloc((size_t)size + 1);
     if (!buffer) {
         fclose(f);
-        printf("Failed to allocate buffer: %s\n", filename);
+        printf("Failed to allocate buffer: %s\n", include_file_name);
         return NULL;
     }
 
@@ -194,11 +222,11 @@ const char* read_file(char* filename) {
 
     if (read != (size_t)size) {
         free(buffer);
-        printf("Failed to read file contents: %s\n", filename);
+        printf("Failed to read file contents: %s\n", include_file_name);
         return NULL;
     }
 
-    printf("File '%s' read successfully, size: %ld bytes\n", filename, size);
+    printf("File '%s' read successfully, size: %ld bytes\n", include_file_name, size);
 
     buffer[size] = '\0';
     return (const char*)buffer; // Caller must free: free((void*)ptr)

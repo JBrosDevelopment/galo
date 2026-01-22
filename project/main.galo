@@ -15,8 +15,10 @@ end
 
 
 #TODO
+# const
 # macro_if 
 # define
 # try catch blocks
 # infinite parameters with args, arg_count, arg_types
 # better errors
+# build system with build.galo

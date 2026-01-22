@@ -84,6 +84,7 @@ enum TokenType {
     TOKEN_KEYWORD_CONTINUE,
     TOKEN_KEYWORD_WHILE,
     TOKEN_KEYWORD_NOT,
+    TOKEN_KEYWORD_CONST,
     TOKEN_OPERATOR_ASSIGN,
     TOKEN_OPERATOR_ARITHMETIC,
     TOKEN_OPERATOR_COMPARISON,
@@ -125,6 +126,7 @@ enum NodeType {
     NODE_OPERATION,
     NODE_SCOPED_IDENTIFIER,
     NODE_CONSTANT,
+    NODE_CONST_DECLARATION,
     NODE_EMPTY,
     NODE_END
 };
@@ -178,6 +180,7 @@ typedef struct StructDeclaration_t {
 typedef struct ScopedIdentifier_t {
     Identifier* scope;
     int size;
+    Node* const_replacement;
 } ScopedIdentifier;
 
 typedef struct VariableAssignment_t {
@@ -226,6 +229,11 @@ typedef struct Operation_t {
     Node* right;
     bool is_not_operator;
 } Operation;
+
+typedef struct ConstDeclaration_t {
+    Token* token;
+    Node replacement;
+} ConstDeclaration;
 
 /////////////////////////////////////////////////////////////////////
 // LISTS 
@@ -308,6 +316,7 @@ typedef struct Validator_Object_t {
     ObjectList* functions;
     ObjectList* structs;
     ObjectList* variables;
+    ObjectList* consts;
     IntList* active_variables;
     int last_variable_id;
     int last_struct_id;

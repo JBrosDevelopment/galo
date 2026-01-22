@@ -344,6 +344,12 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         return void_object_value();
     } else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scoped_identifier = (ScopedIdentifier*)node->data;
+
+        printf("scoped identifier const replcement %p\n", scoped_identifier->const_replacement);
+
+        if (scoped_identifier->const_replacement != NULL) {
+            return interpret_node(interp, scoped_identifier->const_replacement);
+        }
         
         if (scoped_identifier->scope[0].id == -1) {
             printf("ERROR: Invalid scoped identifier\n");

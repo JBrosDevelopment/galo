@@ -237,6 +237,8 @@ void parse_parse_args_and_flags(int argc, char** argv, int* index, BuildArgument
     while (*index < argc) {
         char* arg = argv[*index];
 
+        trim_trailing_whitespace(arg);
+
         if (arg[0] != '-') {
             printf("Error: Unexpected argument or flag `%s` in position %d. Use `galo help` for more information.\n", arg, *index);
             exit(1);

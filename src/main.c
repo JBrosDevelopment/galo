@@ -36,6 +36,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < build_arguments.input_files->size; i++) {
         char* file_name = get_string(build_arguments.input_files, i);
+        trim_trailing_whitespace(file_name);
         preprocess(file_name, source_code_file_names, source_code_files);
     }
 

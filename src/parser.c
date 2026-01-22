@@ -106,6 +106,7 @@ void parse_var_assign(TokenList* tokens, ObjectList* object_list, int* index, Va
     Identifier* var_scope_address = add_object(object_list, var_scope, sizeof(Identifier) * size);
 
     ScopedIdentifier scoped_identifier;
+    scoped_identifier.const_replacement = NULL;
     scoped_identifier.scope = var_scope_address;
     scoped_identifier.size = size;
     var_assign->identifier = scoped_identifier;
@@ -469,6 +470,37 @@ void parse_while(TokenList* tokens, ObjectList* object_list, int* index, WhileLo
     while_loop->body = body;
 }
 
+void parse_const_decl(TokenList* tokens, ObjectList* object_list, int* index, ConstDeclaration* const_decl) {
+    if (get_token(tokens, *index)->type != TOKEN_KEYWORD_CONST) {
+        printf("Error: Invalid const declaration in line %d\n", get_token(tokens, *index)->line);
+        exit(1);
+    }
+    (*index)++;
+
+    Token* name = get_token(tokens, *index);
+    if (name->type != TOKEN_IDENTIFIER) {
+        printf("Error: Invalid const name in line %d\n", name->line);
+        exit(1);
+    }
+    (*index)++;
+
+    if (get_token(tokens, *index)->type != TOKEN_OPERATOR_ASSIGN) {
+        printf("Error: Invalid const declaration, expected `=` but found `%s` in line %d\n", get_token(tokens, *index)->value, get_token(tokens, *index)->line);
+        exit(1);
+    }
+    (*index)++;
+
+    Node replacement = parse_expression(tokens, object_list, index);
+
+    if (replacement.type != NODE_CONSTANT) {
+        printf("Error: Invalid const declaration, expected constant but found `%s` in line %d\n", get_node_type_name(replacement.type), get_token(tokens, *index)->line);
+        exit(1);
+    }
+
+    const_decl->token = name;
+    const_decl->replacement = replacement;
+}
+
 bool line_contains_token(TokenList* tokens, int start, enum TokenType type) {
     int index = start;
     while (get_token(tokens, index)->type != TOKEN_END_OF_LINE) {
@@ -569,6 +601,12 @@ void parse_line(TokenList* tokens, ObjectList* object_list, int* index, Node* no
         node->type = NODE_EMPTY;
         (*index)++;
     }
+    else if (first_token->type == TOKEN_KEYWORD_CONST) {
+        ConstDeclaration const_decl;
+        parse_const_decl(tokens, object_list, index, &const_decl);
+        node->type = NODE_CONST_DECLARATION;
+        node->data = add_object(object_list, &const_decl, sizeof(ConstDeclaration));
+    }
     else {
         printf("Error: Invalid token `%s` in line %d\n", first_token->value, first_token->line);
         exit(1);
@@ -610,6 +648,7 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
             }
         } else {
             ScopedIdentifier ident;
+            ident.const_replacement = NULL;
             ident.size = size;
             ident.scope = add_object(object_list, scope, sizeof(Identifier) * size);
             node.type = NODE_SCOPED_IDENTIFIER;
@@ -693,6 +732,7 @@ const char* get_node_type_name(enum NodeType type) {
         case NODE_OPERATION: return "NODE_OPERATION";
         case NODE_SCOPED_IDENTIFIER: return "NODE_SCOPED_IDENTIFIER";
         case NODE_CONSTANT: return "NODE_CONSTANT";
+        case NODE_CONST_DECLARATION: return "NODE_CONST_DECLARATION";
         case NODE_EMPTY: return "NODE_EMPTY";
         case NODE_END: return "NODE_END";
     }
@@ -836,6 +876,10 @@ void debug_parser_node(Node* node, FILE* out) {
             fprintf(out, "\n");
         }
         fprintf(out, "end");
+    } else if(node->type == NODE_CONST_DECLARATION) {
+        ConstDeclaration* const_decl = (ConstDeclaration*)node->data;
+        fprintf(out, "const %s = ", const_decl->token->value);
+        debug_parser_node(&const_decl->replacement, out);
     }
     else {
         fprintf(out, "[Error, TYPE: %s] ", get_node_type_name(node->type));

@@ -310,6 +310,8 @@ void lexer_add_word_or_number_token(const char* source_code, char* file_name, in
         token->type = TOKEN_OPERATOR_LOGICAL;
     } else if (strcmp(token_value, "not") == 0) {
         token->type = TOKEN_KEYWORD_NOT;
+    } else if (strcmp(token_value, "const") == 0) {
+        token->type = TOKEN_KEYWORD_CONST;
     } else {
         token->type = TOKEN_IDENTIFIER;
     }
@@ -335,6 +337,7 @@ const char* get_token_type_name(enum TokenType type) {
         case TOKEN_KEYWORD_CONTINUE: return "TOKEN_KEYWORD_CONTINUE";
         case TOKEN_KEYWORD_WHILE: return "TOKEN_KEYWORD_WHILE"; 
         case TOKEN_KEYWORD_NOT: return "TOKEN_KEYWORD_NOT";
+        case TOKEN_KEYWORD_CONST: return "TOKEN_KEYWORD_CONST";
         case TOKEN_OPERATOR_ASSIGN: return "TOKEN_OPERATOR_ASSIGN"; 
         case TOKEN_OPERATOR_ARITHMETIC: return "TOKEN_OPERATOR_ARITHMETIC"; 
         case TOKEN_OPERATOR_COMPARISON: return "TOKEN_OPERATOR_COMPARISON"; 

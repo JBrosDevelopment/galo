@@ -214,6 +214,42 @@ int validate_node(Node* node, Validator_Object* validator_object) {
     }
     else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scoped_ident = (ScopedIdentifier*)node->data;
+
+        if (scoped_ident->size == 1) {
+            for (int i = 0; i < validator_object->consts->size; i++) {
+                ConstDeclaration* const_decl =
+                    (ConstDeclaration*)get_object(validator_object->consts, i);
+        
+                if (strcmp(scoped_ident->scope[0].name->value,
+                           const_decl->token->value) == 0) {
+        
+                    if (const_decl->replacement.type != NODE_CONSTANT) {
+                        printf(
+                            "Error: const must be a constant, got %s at line %d\n",
+                            get_node_type_name(const_decl->replacement.type),
+                            scoped_ident->scope[0].name->line
+                        );
+                        exit(1);
+                    }
+        
+                    Token* src = (Token*)const_decl->replacement.data;
+        
+                    Token* tok = malloc(sizeof(Token));
+                    tok->type = src->type;
+                    tok->line = src->line;
+                    tok->value = strdup(src->value);  // 🔥 REQUIRED
+        
+                    Node* new_node = malloc(sizeof(Node));
+                    new_node->type = NODE_CONSTANT;
+                    new_node->data = tok;
+
+                    scoped_ident->const_replacement = new_node;
+        
+                    return validate_node(new_node, validator_object);
+                }
+            }
+        }
+
         int first_name_id = get_id_from_name(scoped_ident->scope[0].name, validator_object);
         scoped_ident->scope[0].id = first_name_id;
 
@@ -663,6 +699,9 @@ int validate_node(Node* node, Validator_Object* validator_object) {
         validator_object->is_inside_while_loop = last_is_while_loop;
         return VOID_TYPE;
     }
+    else if (node->type == NODE_CONST_DECLARATION) {
+        add_object(validator_object->consts, node->data, sizeof(ConstDeclaration));
+    }
     else {
         printf("ERROR: TODO Node type: %s\n", get_node_type_name(node->type));
         exit(1);
@@ -672,10 +711,12 @@ int validate_node(Node* node, Validator_Object* validator_object) {
 
 Validator_Object create_validator_object() {
     Validator_Object validator_object;
+    validator_object.predefined_functions = create_object_list();
     validator_object.structs = create_object_list();
     validator_object.functions = create_object_list();
     validator_object.variables = create_object_list();
     validator_object.active_variables = create_int_list();
+    validator_object.consts = create_object_list();
     validator_object.last_variable_id = 0;
     validator_object.last_struct_id = 0;
     validator_object.last_function_id = 0;
@@ -794,8 +835,6 @@ int* predefined_function_parameters(int parameter_count, ...) {
 }
 
 void add_predefined_functions(Validator_Object* validator_object) {
-    validator_object->predefined_functions = create_object_list();
-
     add_function(validator_object, "print", VOID_TYPE, INFINTE_PARAMETERS, NULL, NO_PARENT); // id 0
     add_function(validator_object, "println", VOID_TYPE, INFINTE_PARAMETERS, NULL, NO_PARENT); // id 1
     add_function(validator_object, "exit", VOID_TYPE, 1, predefined_function_parameters(1, INT_TYPE), NO_PARENT); // id 2

@@ -1,0 +1,9 @@
+#!galo interpret main.galo --emit-ast --emit-validator
+#!include definitions.galo
+
+fun main(args list) void
+
+    let test Data = Data init(TYPE_GREAT, "test")
+    print(test)
+
+end

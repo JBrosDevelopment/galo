@@ -1,0 +1,16 @@
+const TYPE_OKAY = 0
+const TYPE_GOOD = 1
+const TYPE_GREAT = 2
+const TYPE_AMAZING = 3
+
+struct Data
+    type byte
+    value string
+end
+
+fun Data init(type byte, value string) Data
+    let d Data
+    d type = type
+    d value = value
+    return d
+end
