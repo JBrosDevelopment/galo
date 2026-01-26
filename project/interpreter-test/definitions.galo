@@ -14,3 +14,11 @@ fun Data init(type byte, value string) Data
     d value = value
     return d
 end
+
+const RUNTIME_INVALID_COMMAND = 0
+const RUNTIME_ADD = 1
+const RUNTIME_REMOVE = 2
+const RUNTIME_CLEAR = 3
+const RUNTIME_FILTER = 4
+const RUNTIME_PRINT = 5
+const RUNTIME_EXIT = 6

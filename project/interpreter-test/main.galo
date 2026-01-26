@@ -1,9 +1,48 @@
 #!galo interpret main.galo --emit-ast --emit-validator
 #!include definitions.galo
+#!include actions.galo
 
 fun main(args list) void
-
-    let test Data = Data init(TYPE_GREAT, "test")
-    print(test)
-
+    let container list = list init(Data, 10)
+    while true
+        let action int = get_runtime_action()
+        if (action == RUNTIME_INVALID_COMMAND)
+            continue
+        elif (action == RUNTIME_ADD)
+            let type int = get_data_type_from_input()
+            let value string = get_data_value_from_input()
+            let data Data = Data init(type, value)
+            container = list append(container, data)
+        elif (action == RUNTIME_REMOVE)
+            let index int = get_index_of_data_value(container)
+            if (index != -1)
+                container = list remove(container, index)
+            end
+        elif (action == RUNTIME_CLEAR)
+            let is_sure bool = check_is_sure_to_clear()
+            if is_sure
+                container = list clear(container)
+            end
+        elif (action == RUNTIME_FILTER)
+            let remove_type int = get_data_type_from_input()
+            let indexes list = get_indexes_of_non_types(container, remove_type)
+            let i int = (list length(indexes) - 1)
+            while (i >= 0)
+                let remove_index int = list get(indexes, i)
+                container = list remove(container, remove_index)
+                i = (i - 1)
+            end
+        elif (action == RUNTIME_PRINT)
+            let i int = 0
+            while (i < list length(container))
+                println(list get(container, i))
+                i = (i + 1)
+            end
+        elif (action == RUNTIME_EXIT)
+            println("Exitting...")
+            break
+        else
+            println("UNKOWN RUNTIME COMMAND: ERROR")
+        end
+    end
 end

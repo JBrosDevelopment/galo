@@ -628,7 +628,7 @@ BUILTIN_FUNCTION(list_get) {
     int index = *(int*)args[1].data;
 
     if (index < 0 || index >= list->size) {
-        runtime_error(interp, "Index out of bounds");
+        runtime_error(interp, "Index out `%d` of bounds", index);
         return void_object_value();
     }
 

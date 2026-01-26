@@ -172,6 +172,19 @@ void check_type_missmatch(int lhs_type_id, int rhs_type_id, int line, Validator_
     }
 }
 
+IntList* copy_active_variables(Validator_Object* validator_object) {
+    IntList* saved = create_int_list();
+    for (int i = 0; i < validator_object->active_variables->size; i++) {
+        add_int(saved, *get_int(validator_object->active_variables, i));
+    }
+    return saved;
+}
+
+void restore_active_variables(Validator_Object* validator_object, IntList* saved) {
+    free_int_list(validator_object->active_variables);
+    validator_object->active_variables = saved;
+}
+
 int validate_node(Node* node, Validator_Object* validator_object) {
     if (node == NULL) {
         return VOID_TYPE;
@@ -217,18 +230,12 @@ int validate_node(Node* node, Validator_Object* validator_object) {
 
         if (scoped_ident->size == 1) {
             for (int i = 0; i < validator_object->consts->size; i++) {
-                ConstDeclaration* const_decl =
-                    (ConstDeclaration*)get_object(validator_object->consts, i);
+                ConstDeclaration* const_decl = (ConstDeclaration*)get_object(validator_object->consts, i);
         
-                if (strcmp(scoped_ident->scope[0].name->value,
-                           const_decl->token->value) == 0) {
+                if (strcmp(scoped_ident->scope[0].name->value, const_decl->token->value) == 0) {
         
                     if (const_decl->replacement.type != NODE_CONSTANT) {
-                        printf(
-                            "Error: const must be a constant, got %s at line %d\n",
-                            get_node_type_name(const_decl->replacement.type),
-                            scoped_ident->scope[0].name->line
-                        );
+                        printf("Error: const must be a constant, got %s at line %d\n", get_node_type_name(const_decl->replacement.type), scoped_ident->scope[0].name->line);
                         exit(1);
                     }
         
@@ -237,7 +244,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
                     Token* tok = malloc(sizeof(Token));
                     tok->type = src->type;
                     tok->line = src->line;
-                    tok->value = strdup(src->value);  // 🔥 REQUIRED
+                    tok->value = strdup(src->value);
         
                     Node* new_node = malloc(sizeof(Node));
                     new_node->type = NODE_CONSTANT;
@@ -350,6 +357,17 @@ int validate_node(Node* node, Validator_Object* validator_object) {
         case TOKEN_OPERATOR_COMPARISON:
             if ((lhs_type_id == FLOAT_TYPE || lhs_type_id == INT_TYPE || lhs_type_id == BYTE_TYPE) && (rhs_type_id == FLOAT_TYPE || rhs_type_id == INT_TYPE || rhs_type_id == BYTE_TYPE)) {
                 return BOOLEAN_TYPE;
+            } else if (strcmp(op->operator->value, "==") == 0 || strcmp(op->operator->value, "!=") == 0) {
+                if (lhs_type_id == BOOLEAN_TYPE && rhs_type_id == BOOLEAN_TYPE) {
+                    op->is_string_or_bool_eq_or_neq_operation = true;
+                    return BOOLEAN_TYPE;
+                } else if (lhs_type_id == STRING_TYPE && rhs_type_id == STRING_TYPE) {
+                    op->is_string_or_bool_eq_or_neq_operation = true;
+                    return BOOLEAN_TYPE;
+                } else {
+                    printf("Comparison Operator expects `int`, `byte`, `float`, `string`, or `bool`, but got: %s and %s, in line %d\n", get_name_from_id(lhs_type_id, validator_object), get_name_from_id(rhs_type_id, validator_object), op->operator->line);
+                    exit(1);
+                }
             } else {
                 printf("Comparison Operator expects `int`, `byte`, or `float`, but got: %s and %s, in line %d\n", get_name_from_id(lhs_type_id, validator_object), get_name_from_id(rhs_type_id, validator_object), op->operator->line);
                 exit(1);
@@ -582,10 +600,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
         func_decl->id = validator_object->last_function_id++;
         add_object(validator_object->functions, node->data, sizeof(FunctionDeclaration));
 
-        IntList* saved = create_int_list();
-        for (int i = 0; i < validator_object->active_variables->size; i++) {
-            add_int(saved, *get_int(validator_object->active_variables, i));
-        }
+        IntList* saved = copy_active_variables(validator_object);
 
         for (int i = 0; i < func_decl->parameter_count; i++) {
             Parameter* param = &func_decl->parameters[i];
@@ -608,8 +623,7 @@ int validate_node(Node* node, Validator_Object* validator_object) {
         validator(func_decl->body, validator_object);
         validator_object->is_inside_function = is_inside_function;
 
-        free_int_list(validator_object->active_variables);
-        validator_object->active_variables = saved;
+        restore_active_variables(validator_object, saved);
 
         return VOID_TYPE;
     }
@@ -671,18 +685,23 @@ int validate_node(Node* node, Validator_Object* validator_object) {
             fprintf(stderr, "Expected condition type: `boolean` in line %d\n", if_stmt->line);
             exit(1);
         }
-
+        IntList* saved = copy_active_variables(validator_object);
         validator(if_stmt->body, validator_object);
+        restore_active_variables(validator_object, saved);
         for (int i = 0; i < if_stmt->elif_count; i++) {
             int elif_condition_type_id = validate_node(&if_stmt->elifs[i].condition, validator_object);
             if (elif_condition_type_id != BOOLEAN_TYPE) {
                 fprintf(stderr, "Expected condition type: `boolean` in line %d\n", if_stmt->line);
                 exit(1);
             }
+            IntList* elif_saved = copy_active_variables(validator_object);
             validator(if_stmt->elifs[i].body, validator_object);
+            restore_active_variables(validator_object, elif_saved);
         }
         if (if_stmt->else_body != NULL) {
+            IntList* else_saved = copy_active_variables(validator_object);
             validator(if_stmt->else_body, validator_object);
+            restore_active_variables(validator_object, else_saved);
         }
         return VOID_TYPE;
     }
@@ -693,10 +712,14 @@ int validate_node(Node* node, Validator_Object* validator_object) {
             fprintf(stderr, "Expected condition type: `boolean` in line %d\n", while_loop->line);
             exit(1);
         }
+        IntList* saved = copy_active_variables(validator_object);
+
         bool last_is_while_loop = validator_object->is_inside_while_loop;
         validator_object->is_inside_while_loop = true;
         validator(while_loop->body, validator_object);
         validator_object->is_inside_while_loop = last_is_while_loop;
+
+        restore_active_variables(validator_object, saved);
         return VOID_TYPE;
     }
     else if (node->type == NODE_CONST_DECLARATION) {

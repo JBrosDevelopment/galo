@@ -1,0 +1,91 @@
+fun get_data_type_from_input() byte
+    print("Please Input the Data Type: `Okay`, `Good`, `Great`, `Amazing`\n> ")
+    let s string = input()
+    if (s == "Okay")
+        return TYPE_OKAY
+    elif (s == "Good")
+        return TYPE_GOOD
+    elif (s == "Great")
+        return TYPE_GREAT
+    elif (s == "Amazing")
+        return TYPE_AMAZING
+    else 
+        println("Incorrect Data Type was inputted, try again.")
+    end
+    return get_data_type_from_input()
+end
+
+fun get_data_value_from_input() string
+    print("Please Input the Data Value as Text\n> ")
+    let s string = input()
+    if (string length(s) == 0)
+        println("Please Provide Text for Data Value, try again.")
+        return get_data_value_from_input()
+    end
+    return s
+end
+
+fun get_index_of_data_value(l list) int
+    print("Input Text Value of Data you want to Remove\n> ")
+    let s string = input()
+    let i int = 0
+    while (i < list length(l))
+        let d Data = list get(l, i)
+        if (d value == s)
+            return i
+        end
+        i = (i + 1)
+    end
+    println("The Text Value `", s, "` was not Found, could not remove")
+    return -1
+end
+
+fun check_is_sure_to_clear() bool
+    print("Are you sure you want to Clear? `yes`, `no`\n> ")
+    let s string = input()
+    if (s == "yes")
+        println("Data Cleared")
+        return true
+    elif (s == "no")
+        println("Data not Cleared")
+        return false
+    else 
+        println("Incorrect Input, Expected `yes` or `no`. Did not Clear")
+        return false
+    end
+end
+
+fun get_indexes_of_non_types(l list, type int) list
+    let indexes list = list init(int, 10)
+    print(l)
+    let i int = 0
+    while (i < list length(l))
+        let data Data = list get(l, i)
+        if (data type == type)
+            indexes = list append(indexes, i)
+        end
+        i = (i + 1)
+    end
+    return indexes
+end
+
+fun get_runtime_action() int
+    print("Input Action: `add`, `remove`, `clear`, `filter`, `print`, `exit`\n> ")
+    let s string = input()
+    if (s == "exit")
+        return RUNTIME_EXIT
+    elif (s == "add")
+        return RUNTIME_ADD
+    elif (s == "remove")
+        return RUNTIME_REMOVE
+    elif (s == "clear")
+        return RUNTIME_CLEAR
+    elif (s == "filter")
+        return RUNTIME_FILTER
+    elif (s == "print")
+        return RUNTIME_PRINT
+    else 
+        println("Invalid Command `", s, "`")
+    end
+    return RUNTIME_INVALID_COMMAND
+end

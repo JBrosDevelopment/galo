@@ -672,6 +672,7 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
 
             Operation operation;
             operation.is_not_operator = 1;
+            operation.is_string_or_bool_eq_or_neq_operation = 0;
             operation.left = add_object(object_list, &inner, sizeof(Node));
             operation.right = NULL;
             operation.operator = op;
@@ -699,6 +700,7 @@ Node parse_expression(TokenList* tokens, ObjectList* object_list, int* index) {
             (*index)++;
 
             Operation operation;
+            operation.is_string_or_bool_eq_or_neq_operation = 0;
             operation.is_not_operator = 0;
             operation.left = add_object(object_list, &left, sizeof(Node));
             operation.right = add_object(object_list, &right, sizeof(Node));

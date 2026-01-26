@@ -345,8 +345,6 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
     } else if (node->type == NODE_SCOPED_IDENTIFIER) {
         ScopedIdentifier* scoped_identifier = (ScopedIdentifier*)node->data;
 
-        printf("scoped identifier const replcement %p\n", scoped_identifier->const_replacement);
-
         if (scoped_identifier->const_replacement != NULL) {
             return interpret_node(interp, scoped_identifier->const_replacement);
         }
@@ -359,7 +357,6 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         GaloObject value = interp->variables[scoped_identifier->scope[0].id];
         
         if (scoped_identifier->size > 1) {
-            printf("INTERPRET SCOPE\n");
             value = interp->variables[scoped_identifier->scope[0].id];
             for (int i = 1; i < scoped_identifier->size; i++) {
                 value = get_field_in_struct(interp, &value, value.type_id, scoped_identifier->scope[i].name);
@@ -415,7 +412,10 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         
         memcpy(address, rhs.data, lv.size);
         
-        free(rhs.data);
+        if (rhs.type_id != LIST_TYPE) {
+            free(rhs.data);
+        }
+
         return void_object_value();
 
     } else if (node->type == NODE_CONSTANT) {
@@ -459,6 +459,33 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         }
 
         const char* operator = op->operator->value;
+
+        if (op->is_string_or_bool_eq_or_neq_operation) {
+            GaloObject rhs = interpret_node(interp, op->right);
+            bool eq = strcmp(op->operator->value, "==") == 0;
+
+            if (lhs.type_id == STRING_TYPE && rhs.type_id == STRING_TYPE) {
+                bool value = strcmp((char*)lhs.data, (char*)rhs.data) == (eq ? 0 : 1);
+                GaloObject value_copy;
+                value_copy.type_id = BOOLEAN_TYPE;
+                value_copy.size = sizeof(bool);
+                value_copy.data = malloc(sizeof(bool));
+                *(bool*)value_copy.data = value;
+                free(lhs.data);
+                free(rhs.data);
+                return value_copy;
+            } else if (lhs.type_id == BOOLEAN_TYPE && rhs.type_id == BOOLEAN_TYPE) {
+                bool value = eq ? (*(bool*)lhs.data == *(bool*)rhs.data) : (*(bool*)lhs.data != *(bool*)rhs.data);
+                GaloObject value_copy;
+                value_copy.type_id = BOOLEAN_TYPE;
+                value_copy.size = sizeof(bool);
+                value_copy.data = malloc(sizeof(bool));
+                *(bool*)value_copy.data = value;
+                free(lhs.data);
+                free(rhs.data);
+                return value_copy;
+            }
+        }
         
         if (op->operator->type == TOKEN_OPERATOR_ARITHMETIC || op->operator->type == TOKEN_OPERATOR_COMPARISON) {
             GaloObject rhs = interpret_node(interp, op->right);
@@ -479,7 +506,11 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             } else if (lhs.type_id == BYTE_TYPE) {
                 left_value = *(unsigned char*)lhs.data;
             } else {
-                printf("Type not supported for arithmetic operation, lhs type id: %d, rhs type id: %d\n", lhs.type_id, rhs.type_id);
+                if (op->operator->type == TOKEN_OPERATOR_COMPARISON) {
+                    printf("Type not supported for comparison operation, lhs type id: %d, rhs type id: %d, operator: %s\n", lhs.type_id, rhs.type_id, operator);
+                } else {
+                    printf("Type not supported for arithmetic operation, lhs type id: %d, rhs type id: %d, operator: %s\n", lhs.type_id, rhs.type_id, operator);
+                }
                 exit(1);
             }
             if (rhs.type_id == FLOAT_TYPE) {
@@ -489,7 +520,11 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             } else if (rhs.type_id == BYTE_TYPE) {
                 right_value = *(unsigned char*)rhs.data;
             } else {
-                printf("Type not supported for arithmetic operation, lhs type id: %d, rhs type id: %d\n", lhs.type_id, rhs.type_id);
+                if (op->operator->type == TOKEN_OPERATOR_COMPARISON) {
+                    printf("Type not supported for comparison operation, lhs type id: %d, rhs type id: %d, operator: %s\n", lhs.type_id, rhs.type_id, operator);
+                } else {
+                    printf("Type not supported for arithmetic operation, lhs type id: %d, rhs type id: %d, operator: %s\n", lhs.type_id, rhs.type_id, operator);
+                }
                 exit(1);
             }
 
@@ -617,21 +652,24 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
             body_to_run = if_stmt->else_body;
         }
 
-        
+        GaloObject return_object = void_object_value();
         if (body_to_run != NULL) {
             push_scope(interp);
             
             for (int i = 0; i < body_to_run->size; i++) {
                 Node* node = get_node(body_to_run, i);
-                interpret_node(interp, node);
+                return_object = interpret_node(interp, node);
 
-                if (interp->did_exit) {
+                if (interp->did_exit || interp->did_break || interp->did_continue || interp->did_return) {
                     break;
                 }
             }
             pop_scope(interp);
         }
 
+        if (interp->did_return) {
+            return return_object;
+        }
 
         return void_object_value();
     } else if (node->type == NODE_WHILE_LOOP) {
@@ -641,6 +679,8 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
 
         bool pre_did_break = interp->did_break;
         bool pre_did_continue = interp->did_continue;
+
+        GaloObject return_value = void_object_value();
     
         while (1) {
             GaloObject condition = interpret_node(interp, &while_loop->condition);
@@ -659,12 +699,12 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
     
             for (int i = 0; i < while_loop->body->size; i++) {
                 Node* body_node = get_node(while_loop->body, i);
-                interpret_node(interp, body_node);
-                if (interp->did_break || interp->did_continue || interp->did_exit) {
+                return_value = interpret_node(interp, body_node);
+                if (interp->did_break || interp->did_continue || interp->did_exit || interp->did_return) {
                     break;
                 }
             }
-            if (interp->did_break || interp->did_exit) {
+            if (interp->did_break || interp->did_exit || interp->did_return) {
                 interp->did_break = false;
                 break;
             }
@@ -674,7 +714,7 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         interp->did_continue = pre_did_continue;
     
         pop_scope(interp);
-        return void_object_value();
+        return return_value;
     } else if (node->type == NODE_BREAK_STATEMENT) {
         interp->did_break = true;
         return void_object_value();
@@ -1044,7 +1084,7 @@ void print_galo_object(Interpreter_Object* interp, GaloObject* object) {
         printf("data-address: %p, type: list, size: %d\n", object->data, object->size);
         ObjectList* list = (ObjectList*)object->data;
         for (int i = 0; i < list->size; i++) {
-            printf("  ");
+            printf("  [list index %d] ", i);
             print_galo_object(interp, (GaloObject*)list->objects[i]);
         }
     } else if (object->type_id == ANY_TYPE) {
@@ -1061,7 +1101,7 @@ void print_galo_object(Interpreter_Object* interp, GaloObject* object) {
 
         for (int i = 0; i < struct_decl->field_count; i++) {
             GaloObject field = get_field_in_struct(interp, object, object->type_id, struct_decl->fields[i].name.name);
-            printf("  ");
+            printf("  [%s.%s]", struct_decl->name->value, struct_decl->fields[i].name.name->value);
             print_galo_object(interp, &field);
         }
     }

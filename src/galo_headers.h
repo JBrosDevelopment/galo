@@ -228,7 +228,8 @@ typedef struct Operation_t {
     Node* left;
     Node* right;
     bool is_not_operator;
-} Operation;
+    bool is_string_or_bool_eq_or_neq_operation; // string ==/!= string or bool ==/!= bool
+ } Operation;
 
 typedef struct ConstDeclaration_t {
     Token* token;
