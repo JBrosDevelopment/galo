@@ -891,6 +891,7 @@ void add_predefined_functions(Validator_Object* validator_object) {
 
     add_function(validator_object, "is_type", BOOLEAN_TYPE, 2, predefined_function_parameters(2, TYPE_AS_TYPE, ANY_TYPE), NO_PARENT); // id 28
     add_function(validator_object, "print_all_variables", VOID_TYPE, 0, NULL, NO_PARENT); // id 29 
+    add_function(validator_object, "trim", STRING_TYPE, 1, predefined_function_parameters(1, STRING_TYPE), STRING_TYPE); // id 30
     // can't do sizeof or malloc or any other C function because those would only be valid in the context of a compiler.
     // It could work with interpreter but wouldn't be valid with transpiling to python or javascript
 }

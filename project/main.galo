@@ -1,5 +1,5 @@
 #!galo interpret project/main.galo --emit-validator --emit-ast -- 1 5 9 3 -5 4 -99 123 
-#!include project/lib.galo
+#!include lib.galo
 
 fun main(args list) void
     let i int = 0

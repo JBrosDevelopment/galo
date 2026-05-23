@@ -21,6 +21,7 @@ BUILTIN_FUNCTION(string_replace);
 BUILTIN_FUNCTION(string_sub);
 BUILTIN_FUNCTION(string_split);
 BUILTIN_FUNCTION(string_concat);
+BUILTIN_FUNCTION(string_trim);
 
 BUILTIN_FUNCTION(list_init);
 BUILTIN_FUNCTION(list_append);

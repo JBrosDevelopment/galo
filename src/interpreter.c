@@ -722,12 +722,13 @@ GaloObject interpret_node(Interpreter_Object* interp, Node* node) {
         interp->did_continue = true;
         return void_object_value();
     } else if (node->type == NODE_RETURN_STATEMENT) {
-        interp->did_return = true;
         ReturnStatement* return_stmt = (ReturnStatement*)node->data;
         if (return_stmt->value.type != NODE_EMPTY) {
             GaloObject value = interpret_node(interp, &return_stmt->value);
+            interp->did_return = true;
             return value;
         }
+        interp->did_return = true;
         return void_object_value();
     } else if (node->type == NODE_FUNCTION_CALL) {
         FunctionCall* func_call = (FunctionCall*)node->data;
@@ -1018,6 +1019,7 @@ Interpreter_Object* create_interpreter_object(NodeList* ast, Validator_Object* v
     
     add_builtin_function(interp, 28, builtin_is_type);
     add_builtin_function(interp, 29, builtin_print_all_variables);
+    add_builtin_function(interp, 30, builtin_string_trim);
 
     return interp;
 }

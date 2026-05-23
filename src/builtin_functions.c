@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 void runtime_error(Interpreter_Object* interp, const char* fmt, ...) {
     va_list args;
@@ -562,6 +563,30 @@ BUILTIN_FUNCTION(string_concat) {
 
     result[total_length] = '\0';
 
+    return string_object_value(result);
+}
+
+BUILTIN_FUNCTION(string_trim) {
+    char* string = (char*)args[0].data;
+    char* start = string;
+    while (*start != '\0' && isspace((unsigned char)*start)) {
+        start++;
+    }
+
+    char* end = start + strlen(start);
+    while (end > start && isspace((unsigned char)*(end - 1))) {
+        end--;
+    }
+
+    size_t length = (size_t)(end - start);
+    char* result = malloc(length + 1);
+    if (!result) {
+        perror("malloc");
+        exit(1);
+    }
+
+    memcpy(result, start, length);
+    result[length] = '\0';
     return string_object_value(result);
 }
 
